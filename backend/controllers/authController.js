@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 const registerUser = async (req, res) => {
     try {
@@ -94,6 +95,82 @@ const registerUser = async (req, res) => {
     }
 };
 
+
+const loginUser = async (req, res) => {
+    try {
+        const { login, password } = req.body;
+
+        if (!login || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "Username/email and password are required"
+            });
+        }
+
+        const user = await User.findOne({
+            $or: [
+                { email: login.trim().toLowerCase() },
+                { username: login.trim() }
+            ]
+        });
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid username/email or password"
+            });
+        }
+
+        const isPasswordValid = await bcrypt.compare(
+            password,
+            user.password
+        );
+
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid username/email or password"
+            });
+        }
+
+        const token = jwt.sign(
+            {
+                userId: user._id.toString(),
+                role: user.role
+            },
+            process.env.JWT_SECRET,
+            {
+                expiresIn: process.env.JWT_EXPIRES_IN || "1d"
+            }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Login successful",
+            token,
+            user: {
+                id: user._id,
+                fullName: user.fullName,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                points: user.points,
+                currentStreak: user.currentStreak
+            }
+        });
+
+    } catch (error) {
+        console.error("Login error:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Login failed. Please try again."
+        });
+    }
+};
+
+
 module.exports = {
-    registerUser
+    registerUser,
+    loginUser
 };
