@@ -165,6 +165,47 @@ const loginUser = async (req, res) => {
             });
         }
 
+        if (user.lockUntil && user.lockUntil > Date.now()) {
+            const remainingTime = Math.ceil((user.lockUntil - Date.now()) / 60000);
+            return res.status(423).json({
+                success: false,
+                message: `Account is locked. Please try again in ${remainingTime} minutes.`
+            });
+        }
+        
+        if (user.lockUntil && user.lockUntil <= new Date()) {
+            user.failedLoginAttempts = 0;
+            user.lockUntil = null;
+            await user.save();
+        }
+        
+        if (!isPasswordMatch) {
+            user.failedLoginAttempts += 1;
+
+            if (user.failedLoginAttempts >= 3) {
+                user.lockUntil = new Date(Date.now() + 30 * 60 * 1000);
+                await user.save();
+
+                return res.status(423).json({
+                    success: false,
+                    message: "Too many incorrect login attempts. Your account is locked for 30 minutes."
+                });
+            }
+
+            await user.save();
+
+            const remainingAttempts = 3 - user.failedLoginAttempts;
+
+            return res.status(401).json({
+                success: false,
+                message: `Invalid password. You have ${remainingAttempts} attempt(s) remaining.`
+            });
+        }
+
+        user.failedLoginAttempts = 0;
+        user.lockUntil = null;
+        await user.save();
+
         const isPasswordValid = await bcrypt.compare(
             password,
             user.password
