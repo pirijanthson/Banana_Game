@@ -1,6 +1,17 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
+const path = require("path");
+const fs = require("fs");
+
+const escapeHtml = (value = "") => String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 
 const registerUser = async (req, res) => {
     try {
@@ -170,7 +181,199 @@ const loginUser = async (req, res) => {
 };
 
 
+const getUserProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId)
+            .select("-password");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "User profile retrieved successfully",
+            user
+        });
+
+    } catch (error) {
+        console.error("Profile error:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to retrieve user profile"
+        });
+    }
+};
+
+
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Validate email
+        if (!email || !email.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required"
+            });
+        }
+
+        // Find user by email
+        const user = await User.findOne({
+            email: email.trim().toLowerCase()
+        });
+
+        // Use the same response whether the account exists or not
+        if (!user) {
+            return res.status(200).json({
+                success: true,
+                message: "If the account exists, a reset link will be sent."
+            });
+        }
+
+        // Generate a secure random token
+        const resetToken = crypto.randomBytes(32).toString("hex");
+
+        // Store only the hashed token in MongoDB
+        user.resetPasswordToken = crypto
+            .createHash("sha256")
+            .update(resetToken)
+            .digest("hex");
+
+        // Token expires in 15 minutes
+        user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+
+        await user.save();
+
+        // Configure email transporter
+        const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT),
+            secure: Number(process.env.SMTP_PORT) === 465,
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
+            }
+        });
+
+        // Generate password reset link
+        const resetLink =
+            `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+        // Read external HTML email template
+        const emailTemplate = fs.readFileSync(
+            path.join(__dirname, "../templates/email.html"),
+            "utf8"
+        );
+
+        // Replace HTML placeholders
+        const emailHtml = emailTemplate
+            .replace(/{{fullName}}/g, escapeHtml(user.fullName || "there"))
+            .replace(/{{resetLink}}/g, escapeHtml(resetLink))
+            .replace(/{{currentYear}}/g, String(new Date().getFullYear()));
+
+        // Send password reset email
+        await transporter.sendMail({
+            from: `"Banana Quest" <${process.env.SMTP_USER}>`,
+            to: user.email,
+            subject: "Banana Quest - Password Reset Request",
+            html: emailHtml
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "If the account exists, a reset link will be sent."
+        });
+
+    } catch (error) {
+        console.error("Forgot password error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to process password reset request"
+        });
+    }
+};
+
+
+const resetPassword = async (req, res) => {
+    try {
+        const { token, password, confirmPassword } = req.body;
+
+        if (!token || !password || !confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "All fields are required"
+            });
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must contain at least 8 characters"
+            });
+        }
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Passwords do not match"
+            });
+        }
+
+        // Hash the received token
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+
+        // Find account with a valid, unexpired reset token
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid or expired reset link"
+            });
+        }
+
+        // Hash and update the new password
+        user.password = await bcrypt.hash(password, 12);
+
+        // Clear reset token so it cannot be reused
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Password reset successfully. Please login."
+        });
+
+    } catch (error) {
+        console.error("Reset password error:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to reset password"
+        });
+    }
+};
+    
+
+
 module.exports = {
     registerUser,
-    loginUser
+    loginUser,
+    getUserProfile,
+    forgotPassword,
+    resetPassword   
 };
