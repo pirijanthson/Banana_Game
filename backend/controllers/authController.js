@@ -83,6 +83,39 @@ const registerUser = async (req, res) => {
             password: hashedPassword
         });
 
+        try {
+            const transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: process.env.SMTP_PORT,
+                secure: Number(process.env.SMTP_PORT) === 465,
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS
+                }
+            });
+
+            const emailTemplate = fs.readFileSync(
+                path.join(__dirname, "../templates/welcome.html"),
+                "utf8"
+            );
+
+            const emailHtml = emailTemplate
+                .replace(/{{fullName}}/g, escapeHtml(newUser.fullName || "there"))
+                .replace(/{{frontendUrl}}/g, escapeHtml(process.env.FRONTEND_URL))
+
+            await transporter.sendMail({
+                from: process.env.SMTP_USER,
+                to: newUser.email,
+                subject: "Welcome to Banana Quest!",
+                html: welcomeHtml
+            });
+            
+            console.log("Welcome email sent successfully:", newUser.email);
+
+        } catch (error) {
+            console.error("Email sending error:", error.message);
+        }
+
         return res.status(201).json({
             success: true,
             message: "Account created successfully",
