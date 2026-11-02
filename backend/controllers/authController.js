@@ -94,12 +94,12 @@ const registerUser = async (req, res) => {
                 }
             });
 
-            const emailTemplate = fs.readFileSync(
+            const registerHtml = fs.readFileSync(
                 path.join(__dirname, "../templates/welcome.html"),
                 "utf8"
             );
 
-            const emailHtml = emailTemplate
+            const welcomeHtml = registerHtml
                 .replace(/{{fullName}}/g, escapeHtml(newUser.fullName || "there"))
                 .replace(/{{frontendUrl}}/g, escapeHtml(process.env.FRONTEND_URL))
 
@@ -109,7 +109,7 @@ const registerUser = async (req, res) => {
                 subject: "Welcome to Banana Quest!",
                 html: welcomeHtml
             });
-            
+
             console.log("Welcome email sent successfully:", newUser.email);
 
         } catch (error) {
@@ -187,6 +187,43 @@ const loginUser = async (req, res) => {
                 expiresIn: process.env.JWT_EXPIRES_IN || "1d"
             }
         );
+
+        try {
+            const transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: Number(process.env.SMTP_PORT),
+                secure: Number(process.env.SMTP_PORT) === 465,
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS
+                }
+            });
+
+            const loginHtml = path.join(
+                __dirname,
+                "../templates/login.html"
+            );
+
+            let emaillogin = fs.readFileSync(loginHtml, "utf8");
+
+            emaillogin = emaillogin
+                .replace(/{{fullName}}/g, escapeHtml(user.fullName));
+
+            await transporter.sendMail({
+                from: `"Banana Quest Security" <${process.env.SMTP_USER}>`,
+                to: user.email,
+                subject: "Banana Quest - Login Notification",
+                html: emaillogin
+            });
+
+            console.log("Login notification email sent successfully");
+
+        } catch (emailError) {
+            console.error(
+                "Login notification email error:",
+                emailError.message
+            );
+        }
 
         return res.status(200).json({
             success: true,
