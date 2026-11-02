@@ -3,6 +3,15 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
+const path = require("path");
+const fs = require("fs");
+
+const escapeHtml = (value = "") => String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 
 const registerUser = async (req, res) => {
     try {
@@ -205,13 +214,15 @@ const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
 
-        if (!email) {
+        // Validate email
+        if (!email || !email.trim()) {
             return res.status(400).json({
                 success: false,
                 message: "Email is required"
             });
         }
 
+        // Find user by email
         const user = await User.findOne({
             email: email.trim().toLowerCase()
         });
@@ -249,21 +260,28 @@ const forgotPassword = async (req, res) => {
             }
         });
 
+        // Generate password reset link
         const resetLink =
             `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
+        // Read external HTML email template
+        const emailTemplate = fs.readFileSync(
+            path.join(__dirname, "../templates/email.html"),
+            "utf8"
+        );
+
+        // Replace HTML placeholders
+        const emailHtml = emailTemplate
+            .replace(/{{fullName}}/g, escapeHtml(user.fullName || "there"))
+            .replace(/{{resetLink}}/g, escapeHtml(resetLink))
+            .replace(/{{currentYear}}/g, String(new Date().getFullYear()));
+
+        // Send password reset email
         await transporter.sendMail({
             from: `"Banana Quest" <${process.env.SMTP_USER}>`,
             to: user.email,
-            subject: "Banana Quest - Password Reset",
-            html: `
-                <h2>Password Reset Request</h2>
-                <p>Hello ${user.fullName},</p>
-                <p>Click the link below to reset your password.</p>
-                <a href="${resetLink}">Reset My Password</a>
-                <p>This link expires in 15 minutes.</p>
-                <p>If you did not request this, please ignore this email.</p>
-            `
+            subject: "Banana Quest - Password Reset Request",
+            html: emailHtml
         });
 
         return res.status(200).json({
@@ -272,7 +290,7 @@ const forgotPassword = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Forgot password error:", error.message);
+        console.error("Forgot password error:", error);
 
         return res.status(500).json({
             success: false,
