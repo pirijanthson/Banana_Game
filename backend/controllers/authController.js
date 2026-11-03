@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const TokenBlacklist = require("../models/TokenBlacklist");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -478,6 +479,33 @@ const resetPassword = async (req, res) => {
         });
     }
 };
+
+
+const logoutUser = async (req, res) => {
+    try {
+        const token = req.headers.authorization.split(" ")[1];
+
+        const decoded = jwt.decode(token);
+
+        await TokenBlacklist.create({
+            token,
+            expiresAt: new Date(decoded.exp * 1000)
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Logout successful"
+        });
+
+    } catch (error) {
+        console.error("Logout error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error during logout"
+        });
+    }
+};
     
 
 
@@ -486,5 +514,6 @@ module.exports = {
     loginUser,
     getUserProfile,
     forgotPassword,
-    resetPassword   
+    resetPassword,
+    logoutUser   
 };
