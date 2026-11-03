@@ -6,15 +6,16 @@ const {
     loginUser,
     getUserProfile,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    logoutUser
  } = require("../controllers/authController");
 
- const protect = require("../middleware/authMiddleware");
+ const {protect} = require("../middleware/authMiddleware");
 
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.get("/profile", protect, getUserProfile);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:token", resetPassword);
-
+router.post("/logout", protect, logoutUser);
 module.exports = router;
