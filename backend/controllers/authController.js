@@ -312,10 +312,12 @@ const loginUser = async (req, res) => {
             });
         }
 
+        const normalizedLogin = login.trim();
+
         const user = await User.findOne({
             $or: [
-                { email: login.trim().toLowerCase() },
-                { username: login.trim() }
+                { email: normalizedLogin.toLowerCase() },
+                { username: normalizedLogin }
             ]
         });
 
@@ -567,7 +569,9 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
     try {
-        const { token, password, confirmPassword } = req.body;
+        const tokenFromBody = req.body?.token;
+        const token = tokenFromBody || req.params?.token;
+        const { password, confirmPassword } = req.body;
 
         if (!token || !password || !confirmPassword) {
             return res.status(400).json({
@@ -657,7 +661,7 @@ const logoutUser = async (req, res) => {
 
         await TokenBlacklist.create({
             token,
-            expiresAt: new Date(decoded.exp * 1000)
+            expiresAt: decoded?.exp ? new Date(decoded.exp * 1000) : new Date(Date.now() + 60 * 60 * 1000)
         });
 
         return res.status(200).json({
@@ -674,6 +678,7 @@ const logoutUser = async (req, res) => {
         });
     }
 };
+
     
 
 module.exports = {
