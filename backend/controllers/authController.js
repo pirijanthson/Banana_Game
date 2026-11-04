@@ -4,8 +4,13 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
+const { OAuth2Client } = require("google-auth-library");
 const path = require("path");
 const fs = require("fs");
+
+const googleClient = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID
+);
 
 const escapeHtml = (value = "") => String(value)
     .replace(/&/g, "&amp;")
@@ -140,6 +145,161 @@ const registerUser = async (req, res) => {
     }
 };
 
+const googleLogin = async (req, res) => {
+    try {
+        const { idToken } = req.body;
+
+        if (!idToken) {
+            return res.status(400).json({
+                success: false,
+                message: "Google ID token is required"
+            });
+        }
+
+        // Verify Google ID token
+        const ticket = await googleClient.verifyIdToken({
+            idToken,
+            audience: process.env.GOOGLE_CLIENT_ID
+        });
+
+        const payload = ticket.getPayload();
+
+        if (!payload || !payload.email || !payload.email_verified) {
+            return res.status(401).json({
+                success: false,
+                message: "Google account email is not verified"
+            });
+        }
+
+        const {
+            sub: googleId,
+            email,
+            name,
+            picture
+        } = payload;
+
+        // Find existing Google account
+        let user = await User.findOne({ googleId });
+
+        // Find existing account using verified email
+        if (!user) {
+            user = await User.findOne({
+                email: email.toLowerCase()
+            });
+
+            if (user) {
+                // Link verified Google account to existing user
+                user.googleId = googleId;
+                user.profilePicture = picture || null;
+                await user.save();
+            }
+        }
+
+        // Create new user if account does not exist
+        if (!user) {
+            const baseUsername = email
+                .split("@")[0]
+                .replace(/[^a-zA-Z0-9_]/g, "")
+                .slice(0, 15) || "googleuser";
+
+            let username = baseUsername;
+            let counter = 1;
+
+            while (await User.findOne({ username })) {
+                username = `${baseUsername}${counter}`;
+                counter++;
+            }
+
+            user = await User.create({
+                fullName: name || baseUsername,
+                username,
+                email: email.toLowerCase(),
+                googleId,
+                profilePicture: picture || null,
+                authProvider: "google",
+                role: "USER",
+                points: 0,
+                currentStreak: 0
+            });
+        }
+
+        // Generate Banana Quest JWT
+        const token = jwt.sign(
+            {
+                userId: user._id.toString(),
+                role: user.role
+            },
+            process.env.JWT_SECRET,
+            {
+                expiresIn: process.env.JWT_EXPIRES_IN || "1d"
+            }
+        );
+
+        // Send login notification email
+        try {
+            const transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: Number(process.env.SMTP_PORT),
+                secure: Number(process.env.SMTP_PORT) === 465,
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS
+                }
+            });
+
+            const templatePath = path.join(
+                __dirname,
+                "../templates/login-notification.html"
+            );
+
+            let emailTemplate = fs.readFileSync(
+                templatePath,
+                "utf8"
+            );
+
+            emailTemplate = emailTemplate
+                .replace(/{{fullName}}/g, escapeHtml(user.fullName))
+
+            await transporter.sendMail({
+                from: `"Banana Quest Security" <${process.env.SMTP_USER}>`,
+                to: user.email,
+                subject: "Banana Quest - Login Notification",
+                html: emailTemplate
+            });
+
+        } catch (emailError) {
+            console.error(
+                "Google login notification error:",
+                emailError.message
+            );
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Google login successful",
+            token,
+            user: {
+                id: user._id,
+                fullName: user.fullName,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                points: user.points,
+                currentStreak: user.currentStreak,
+                profilePicture: user.profilePicture
+            }
+        });
+
+    } catch (error) {
+        console.error("Google login error:", error.message);
+
+        return res.status(401).json({
+            success: false,
+            message: "Google authentication failed"
+        });
+    }
+};
+
 
 const loginUser = async (req, res) => {
     try {
@@ -173,14 +333,19 @@ const loginUser = async (req, res) => {
                 message: `Account is locked. Please try again in ${remainingTime} minutes.`
             });
         }
-        
-        if (user.lockUntil && user.lockUntil <= new Date()) {
+
+        if (user.lockUntil && user.lockUntil <= Date.now()) {
             user.failedLoginAttempts = 0;
             user.lockUntil = null;
             await user.save();
         }
-        
-        if (!isPasswordMatch) {
+
+        const isPasswordValid = await bcrypt.compare(
+            password,
+            user.password
+        );
+
+        if (!isPasswordValid) {
             user.failedLoginAttempts += 1;
 
             if (user.failedLoginAttempts >= 3) {
@@ -206,18 +371,6 @@ const loginUser = async (req, res) => {
         user.failedLoginAttempts = 0;
         user.lockUntil = null;
         await user.save();
-
-        const isPasswordValid = await bcrypt.compare(
-            password,
-            user.password
-        );
-
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid username/email or password"
-            });
-        }
 
         const token = jwt.sign(
             {
@@ -483,9 +636,24 @@ const resetPassword = async (req, res) => {
 
 const logoutUser = async (req, res) => {
     try {
-        const token = req.headers.authorization.split(" ")[1];
+        const authHeader = req.headers.authorization;
 
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return res.status(401).json({
+                success: false,
+                message: "Authorization token is missing."
+            });
+        }
+
+        const token = authHeader.split(" ")[1];
         const decoded = jwt.decode(token);
+
+        if (!decoded || !decoded.exp) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid token provided."
+            });
+        }
 
         await TokenBlacklist.create({
             token,
@@ -508,12 +676,12 @@ const logoutUser = async (req, res) => {
 };
     
 
-
 module.exports = {
     registerUser,
     loginUser,
     getUserProfile,
     forgotPassword,
     resetPassword,
-    logoutUser   
+    logoutUser,
+    googleLogin   
 };
