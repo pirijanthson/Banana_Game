@@ -26,7 +26,10 @@ const userSchema = new mongoose.Schema(
 
         password: {
             type: String,
-            required: true
+            required: function () {
+                return this.authProvider === "local";
+            },
+            minlength: 8
         },
 
         role: {
@@ -63,6 +66,24 @@ const userSchema = new mongoose.Schema(
         lockUntil: {
             type: Date,
             default: null
+        },
+
+        googleId: {
+            type: String,
+            unique: true,
+            sparse: true,
+            default: null
+        },
+
+        profilePicture: {
+            type: String,
+            default: null
+        },
+
+        authProvider: {
+            type: String,
+            enum: ["local", "google"],
+            default: "local"
         }
     },
 
