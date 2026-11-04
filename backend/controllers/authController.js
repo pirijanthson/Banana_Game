@@ -152,10 +152,12 @@ const loginUser = async (req, res) => {
             });
         }
 
+        const normalizedLogin = login.trim();
+
         const user = await User.findOne({
             $or: [
-                { email: login.trim().toLowerCase() },
-                { username: login.trim() }
+                { email: normalizedLogin.toLowerCase() },
+                { username: normalizedLogin }
             ]
         });
 
@@ -173,14 +175,19 @@ const loginUser = async (req, res) => {
                 message: `Account is locked. Please try again in ${remainingTime} minutes.`
             });
         }
-        
-        if (user.lockUntil && user.lockUntil <= new Date()) {
+
+        if (user.lockUntil && user.lockUntil <= Date.now()) {
             user.failedLoginAttempts = 0;
             user.lockUntil = null;
             await user.save();
         }
-        
-        if (!isPasswordMatch) {
+
+        const isPasswordValid = await bcrypt.compare(
+            password,
+            user.password
+        );
+
+        if (!isPasswordValid) {
             user.failedLoginAttempts += 1;
 
             if (user.failedLoginAttempts >= 3) {
@@ -206,18 +213,6 @@ const loginUser = async (req, res) => {
         user.failedLoginAttempts = 0;
         user.lockUntil = null;
         await user.save();
-
-        const isPasswordValid = await bcrypt.compare(
-            password,
-            user.password
-        );
-
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid username/email or password"
-            });
-        }
 
         const token = jwt.sign(
             {
@@ -414,7 +409,9 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
     try {
-        const { token, password, confirmPassword } = req.body;
+        const tokenFromBody = req.body?.token;
+        const token = tokenFromBody || req.params?.token;
+        const { password, confirmPassword } = req.body;
 
         if (!token || !password || !confirmPassword) {
             return res.status(400).json({
@@ -483,13 +480,29 @@ const resetPassword = async (req, res) => {
 
 const logoutUser = async (req, res) => {
     try {
-        const token = req.headers.authorization.split(" ")[1];
+        const authHeader = req.headers.authorization;
 
-        const decoded = jwt.decode(token);
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return res.status(401).json({
+                success: false,
+                message: "Not authorized. Please log in."
+            });
+        }
+
+        const token = authHeader.split(" ")[1];
+
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                message: "Token is missing."
+            });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         await TokenBlacklist.create({
             token,
-            expiresAt: new Date(decoded.exp * 1000)
+            expiresAt: decoded?.exp ? new Date(decoded.exp * 1000) : new Date(Date.now() + 60 * 60 * 1000)
         });
 
         return res.status(200).json({
