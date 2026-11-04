@@ -451,7 +451,9 @@ const loginUser = async (req, res) => {
 const getUserProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user.userId)
-            .select("-password");
+            .select(
+                "fullName username email role points currentStreak profilePicture authProvider createdAt updatedAt"
+            );
 
         if (!user) {
             return res.status(404).json({
