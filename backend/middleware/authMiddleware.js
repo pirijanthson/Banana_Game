@@ -42,6 +42,9 @@ const protect = async (req, res, next) => {
             role: decoded.role
         };
 
+        req.token = token;
+        req.tokenExpiresAt = new Date(decoded.exp * 1000);
+
         next();
 
     } catch (error) {

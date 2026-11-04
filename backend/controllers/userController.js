@@ -1,4 +1,6 @@
 const User = require("../models/User");
+const TokenBlacklist = require("../models/TokenBlacklist");
+const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
@@ -179,6 +181,130 @@ const updateUserProfile = async (req, res) => {
   }
 };
 
-module.exports = {
-  updateUserProfile
+
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All password fields are required."
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must contain at least 8 characters."
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password and confirm password do not match."
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      });
+    }
+
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        message: "This account does not have a password. Use your Google account to sign in."
+      });
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Current password is incorrect."
+      });
+    }
+
+    const isSamePassword = await bcrypt.compare(
+      newPassword,
+      user.password
+    );
+
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from your current password."
+      });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 12);
+
+    
+    // Send password change notification email
+    try {
+      const templatePath = path.join(
+        __dirname,
+        "../templates/password-change-notification.html"
+      );
+
+      let emailTemplate = fs.readFileSync(templatePath, "utf8");
+
+      emailTemplate = emailTemplate.replace(
+        /{{fullName}}/g,
+        escapeHtml(user.fullName)
+      );
+
+      await transporter.sendMail({
+        from: `"Banana Quest" <${process.env.SMTP_USER}>`,
+        to: user.email,
+        subject: "Banana Quest - Password Changed Successfully",
+        html: emailTemplate
+      });
+
+      console.log("Password change notification email sent successfully.");
+
+    } catch (emailError) {
+      console.error(
+        "Password change email error:",
+        emailError.message
+      );
+    }
+
+    await user.save();
+    
+    // Automatically log out the user after changing the password
+    await TokenBlacklist.create({
+        token: req.token,
+        expiresAt: req.tokenExpiresAt
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully."
+    });
+
+  } catch (error) {
+    console.error("Change Password Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error."
+    });
+  }
 };
+
+module.exports = {
+  updateUserProfile,
+  changePassword
+};
+
