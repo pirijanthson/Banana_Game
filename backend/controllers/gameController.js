@@ -1,4 +1,6 @@
+
 const GameSession = require("../models/GameSession");
+const mongoose = require("mongoose");
 const { fetchBananaPuzzle } = require("../services/bananaApiService");
 
 const difficultySettings = {
@@ -20,6 +22,25 @@ const difficultySettings = {
     questionTimeLimitSeconds: 30,
     pointsPerQuestion: 30,
   },
+};
+
+const setGameCookie = (res, sessionId) => {
+  res.cookie("gameSessionId", sessionId.toString(), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 1000,
+    path: "/",
+  });
+};
+
+const clearGameCookie = (res) => {
+  res.clearCookie("gameSessionId", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
 };
 
 // START GAME
@@ -47,6 +68,8 @@ const startGame = async (req, res) => {
       currentQuestionImage: puzzle.question,
       currentAnswer: puzzle.solution,
     });
+
+    setGameCookie(res, gameSession._id);
 
     return res.status(201).json({
       success: true,
@@ -78,11 +101,22 @@ const startGame = async (req, res) => {
 // SUBMIT ANSWER
 const submitAnswer = async (req, res) => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = req.cookies?.gameSessionId;
     const { answer } = req.body;
 
-    if (answer !== undefined && answer !== null &&
-        typeof answer !== "string" && typeof answer !== "number") {
+    if (!sessionId || !mongoose.Types.ObjectId.isValid(sessionId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Game session cookie is missing or invalid.",
+      });
+    }
+
+    if (
+      answer !== undefined &&
+      answer !== null &&
+      typeof answer !== "string" &&
+      typeof answer !== "number"
+    ) {
       return res.status(400).json({
         success: false,
         message: "Answer must be text or a number.",
@@ -95,6 +129,8 @@ const submitAnswer = async (req, res) => {
     }).select("+currentAnswer");
 
     if (!gameSession) {
+      clearGameCookie(res);
+
       return res.status(404).json({
         success: false,
         message: "Game session not found.",
@@ -102,31 +138,36 @@ const submitAnswer = async (req, res) => {
     }
 
     if (gameSession.status !== "ACTIVE") {
+      clearGameCookie(res);
+
       return res.status(400).json({
         success: false,
         message: "This game session is no longer active.",
       });
     }
 
-    // CHECK QUESTION TIME
     const elapsedTime =
       (Date.now() - new Date(gameSession.questionStartedAt).getTime()) / 1000;
 
     const timeExpired =
       elapsedTime >= gameSession.questionTimeLimitSeconds;
 
-    if (!timeExpired && (answer === undefined || answer === null || String(answer).trim() === "")) {
+    if (
+      !timeExpired &&
+      (answer === undefined ||
+        answer === null ||
+        String(answer).trim() === "")
+    ) {
       return res.status(400).json({
         success: false,
         message: "Please submit your answer.",
       });
     }
 
-    // CHECK ANSWER
     const isCorrect =
       !timeExpired &&
       String(answer).trim().toLowerCase() ===
-      String(gameSession.currentAnswer).trim().toLowerCase();
+        String(gameSession.currentAnswer).trim().toLowerCase();
 
     let result;
 
@@ -144,7 +185,6 @@ const submitAnswer = async (req, res) => {
       result = "WRONG";
     }
 
-    // UPDATE QUESTION PROGRESS
     gameSession.questionsAnswered += 1;
 
     // CHECK GAME END CONDITIONS
@@ -156,6 +196,7 @@ const submitAnswer = async (req, res) => {
       gameSession.currentQuestionImage = null;
 
       await gameSession.save();
+      clearGameCookie(res);
 
       return res.status(200).json({
         success: true,
@@ -179,6 +220,7 @@ const submitAnswer = async (req, res) => {
       gameSession.currentQuestionImage = null;
 
       await gameSession.save();
+      clearGameCookie(res);
 
       return res.status(200).json({
         success: true,
@@ -232,7 +274,7 @@ const submitAnswer = async (req, res) => {
   }
 };
 
-
+// GET GAME HISTORY
 const getGameHistory = async (req, res) => {
   try {
     const games = await GameSession.find({
@@ -259,9 +301,72 @@ const getGameHistory = async (req, res) => {
   }
 };
 
+// GET SCORE SUMMARY
+const getScoreSummary = async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.userId);
+
+    const summary = await GameSession.aggregate([
+      {
+        $match: {
+          userId,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalGames: { $sum: 1 },
+          completedGames: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "COMPLETED"] }, 1, 0],
+            },
+          },
+          failedGames: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0],
+            },
+          },
+          highestScore: { $max: "$score" },
+          totalPoints: { $sum: "$score" },
+          averageScore: { $avg: "$score" },
+        },
+      },
+    ]);
+
+    const result = summary[0] || {
+      totalGames: 0,
+      completedGames: 0,
+      failedGames: 0,
+      highestScore: 0,
+      totalPoints: 0,
+      averageScore: 0,
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: "Score summary retrieved successfully.",
+      scores: {
+        totalGames: result.totalGames,
+        completedGames: result.completedGames,
+        failedGames: result.failedGames,
+        highestScore: result.highestScore,
+        totalPoints: result.totalPoints,
+        averageScore: Number((result.averageScore || 0).toFixed(2)),
+      },
+    });
+  } catch (error) {
+    console.error("Get Score Summary Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve score summary.",
+    });
+  }
+};
 
 module.exports = {
   startGame,
   submitAnswer,
   getGameHistory,
+  getScoreSummary,
 };
