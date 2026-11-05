@@ -232,7 +232,36 @@ const submitAnswer = async (req, res) => {
   }
 };
 
+
+const getGameHistory = async (req, res) => {
+  try {
+    const games = await GameSession.find({
+      userId: req.user.userId,
+    })
+      .select(
+        "difficulty score lives totalQuestions questionsAnswered correctAnswers status startedAt endedAt createdAt"
+      )
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Game history retrieved successfully.",
+      totalGames: games.length,
+      games,
+    });
+  } catch (error) {
+    console.error("Get Game History Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve game history.",
+    });
+  }
+};
+
+
 module.exports = {
   startGame,
   submitAnswer,
+  getGameHistory,
 };
