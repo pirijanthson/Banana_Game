@@ -431,10 +431,80 @@ const getScoreStatistics = async (req, res) => {
 };
 
 
+const getLeaderboard = async (req, res) => {
+  try {
+    const leaderboard = await GameSession.aggregate([
+      {
+        $match: {
+          status: "COMPLETED",
+        },
+      },
+      {
+        $group: {
+          _id: "$userId",
+          totalPoints: { $sum: "$score" },
+          highestScore: { $max: "$score" },
+          totalGames: { $sum: 1 },
+        },
+      },
+      {
+        $sort: {
+          totalPoints: -1,
+          highestScore: -1,
+        },
+      },
+      {
+        $limit: 10,
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      {
+        $unwind: "$user",
+      },
+      {
+        $project: {
+          _id: 0,
+          userId: "$user._id",
+          username: "$user.username",
+          totalPoints: 1,
+          highestScore: 1,
+          totalGames: 1,
+        },
+      },
+    ]);
+
+    const rankedLeaderboard = leaderboard.map((player, index) => ({
+      rank: index + 1,
+      ...player,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      message: "Leaderboard retrieved successfully.",
+      leaderboard: rankedLeaderboard,
+    });
+  } catch (error) {
+    console.error("Get Leaderboard Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve leaderboard.",
+    });
+  }
+};
+
+
 module.exports = {
   startGame,
   submitAnswer,
   getGameHistory,
   getScoreSummary,
   getScoreStatistics,
+  getLeaderboard,
 };
