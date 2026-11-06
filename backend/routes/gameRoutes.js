@@ -6,7 +6,8 @@ const { startGame,
         getGameHistory,
         getScoreSummary,
         getScoreStatistics,
-        getLeaderboard
+        getLeaderboard,
+        getMyLeaderboardRank
  } = require("../controllers/gameController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -17,5 +18,6 @@ router.get("/history", protect, getGameHistory);
 router.get("/scores/summary", protect, getScoreSummary);
 router.get("/scores/statistics", protect, getScoreStatistics);
 router.get("/leaderboard", protect, getLeaderboard);
+router.get("/rank", protect, getMyLeaderboardRank);
 
 module.exports = router;
