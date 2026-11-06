@@ -106,7 +106,7 @@ const registerUser = async (req, res) => {
             );
 
             const welcomeHtml = registerHtml
-                .replace(/{{fullName}}/g, escapeHtml(newUser.fullName || "there"))
+                .replace(/{{fullName}}/g, escapeHtml(newUser.fullName))
                 .replace(/{{frontendUrl}}/g, escapeHtml(process.env.FRONTEND_URL))
 
             await transporter.sendMail({
@@ -231,7 +231,7 @@ const googleLogin = async (req, res) => {
             },
             process.env.JWT_SECRET,
             {
-                expiresIn: process.env.JWT_EXPIRES_IN || "1d"
+                expiresIn: process.env.JWT_EXPIRES_IN
             }
         );
 
@@ -381,7 +381,7 @@ const loginUser = async (req, res) => {
             },
             process.env.JWT_SECRET,
             {
-                expiresIn: process.env.JWT_EXPIRES_IN || "1d"
+                expiresIn: process.env.JWT_EXPIRES_IN
             }
         );
 
@@ -541,7 +541,7 @@ const forgotPassword = async (req, res) => {
 
         // Replace HTML placeholders
         const emailHtml = emailTemplate
-            .replace(/{{fullName}}/g, escapeHtml(user.fullName || "there"))
+            .replace(/{{fullName}}/g, escapeHtml(user.fullName))
             .replace(/{{resetLink}}/g, escapeHtml(resetLink))
             .replace(/{{currentYear}}/g, String(new Date().getFullYear()));
 
