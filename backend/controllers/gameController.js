@@ -499,6 +499,62 @@ const getLeaderboard = async (req, res) => {
   }
 };
 
+const getMyLeaderboardRank = async (req, res) => {
+  try {
+    const leaderboard = await GameSession.aggregate([
+      {
+        $match: {
+          status: "COMPLETED",
+        },
+      },
+      {
+        $group: {
+          _id: "$userId",
+          totalPoints: { $sum: "$score" },
+          highestScore: { $max: "$score" },
+          totalGames: { $sum: 1 },
+        },
+      },
+      {
+        $sort: {
+          totalPoints: -1,
+          highestScore: -1,
+        },
+      },
+    ]);
+
+    const myRank = leaderboard.findIndex(
+      (player) => player._id.toString() === req.user._id.toString()
+    );
+
+    if (myRank === -1) {
+      return res.status(200).json({
+        success: true,
+        message: "You are not ranked yet. Complete a game first.",
+        leaderboard: null,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Your leaderboard rank retrieved successfully.",
+      leaderboard: {
+        rank: myRank + 1,
+        totalPoints: leaderboard[myRank].totalPoints,
+        highestScore: leaderboard[myRank].highestScore,
+        totalGames: leaderboard[myRank].totalGames,
+      },
+    });
+  } catch (error) {
+    console.error("Get My Leaderboard Rank Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve your leaderboard rank.",
+    });
+  }
+};
+
 
 module.exports = {
   startGame,
@@ -507,4 +563,5 @@ module.exports = {
   getScoreSummary,
   getScoreStatistics,
   getLeaderboard,
+  getMyLeaderboardRank,
 };
