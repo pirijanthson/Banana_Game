@@ -364,9 +364,77 @@ const getScoreSummary = async (req, res) => {
   }
 };
 
+
+const getScoreStatistics = async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.userId);
+
+    const statistics = await GameSession.aggregate([
+      {
+        $match: { userId },
+      },
+      {
+        $group: {
+          _id: null,
+          totalQuestionsAnswered: {
+            $sum: "$questionsAnswered",
+          },
+          totalCorrectAnswers: {
+            $sum: "$correctAnswers",
+          },
+          totalPointsEarned: {
+            $sum: "$score",
+          },
+        },
+      },
+    ]);
+
+    const result = statistics[0] || {
+      totalQuestionsAnswered: 0,
+      totalCorrectAnswers: 0,
+      totalPointsEarned: 0,
+    };
+
+    const totalIncorrectAnswers =
+      result.totalQuestionsAnswered - result.totalCorrectAnswers;
+
+    const accuracyPercentage =
+      result.totalQuestionsAnswered > 0
+        ? Number(
+            (
+              (result.totalCorrectAnswers /
+                result.totalQuestionsAnswered) *
+              100
+            ).toFixed(2)
+          )
+        : 0;
+
+    return res.status(200).json({
+      success: true,
+      message: "Score statistics retrieved successfully.",
+      statistics: {
+        totalQuestionsAnswered: result.totalQuestionsAnswered,
+        totalCorrectAnswers: result.totalCorrectAnswers,
+        totalIncorrectAnswers,
+        totalPointsEarned: result.totalPointsEarned,
+        accuracyPercentage,
+      },
+    });
+  } catch (error) {
+    console.error("Get Score Statistics Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve score statistics.",
+    });
+  }
+};
+
+
 module.exports = {
   startGame,
   submitAnswer,
   getGameHistory,
   getScoreSummary,
+  getScoreStatistics,
 };

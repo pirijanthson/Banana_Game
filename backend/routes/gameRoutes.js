@@ -4,7 +4,8 @@ const router = express.Router();
 const { startGame,
         submitAnswer,
         getGameHistory,
-        getScoreSummary
+        getScoreSummary,
+        getScoreStatistics
  } = require("../controllers/gameController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -13,5 +14,6 @@ router.post("/start", protect, startGame);
 router.post("/:sessionId/answer", protect, submitAnswer);
 router.get("/history", protect, getGameHistory);
 router.get("/scores/summary", protect, getScoreSummary);
+router.get("/scores/statistics", protect, getScoreStatistics);
 
 module.exports = router;
