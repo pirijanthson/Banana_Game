@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const TokenBlacklist = require("../models/TokenBlacklist");
+const LoginOTP = require("../models/LoginOTP");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -12,12 +13,55 @@ const googleClient = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID
 );
 
+
+const generateLoginOTP = () => {
+    const otp = crypto.randomInt(100000, 1000000).toString();
+
+    const hashedOTP = crypto
+        .createHash("sha256")
+        .update(otp)
+        .digest("hex");
+
+    return {
+        otp,
+        hashedOTP
+    };
+};
+
+
 const escapeHtml = (value = "") => String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
+
+const sendLoginOTPEmail = async (user, otp) => {
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT),
+        secure: Number(process.env.SMTP_PORT) === 465,
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+        }
+    });
+
+    const templatePath = path.join(
+        __dirname,
+        "../templates/login-notification.html"
+    );
+    const emailTemplate = fs.readFileSync(templatePath, "utf8")
+        .replace(/{{fullName}}/g, escapeHtml(user.fullName))
+        .replace(/{{OTP}}/g, escapeHtml(otp));
+
+    await transporter.sendMail({
+        from: `"Banana Quest Security" <${process.env.SMTP_USER}>`,
+        to: user.email,
+        subject: "Banana Quest - Login Verification Code",
+        html: emailTemplate
+    });
+};
 
 const registerUser = async (req, res) => {
     try {
@@ -301,6 +345,7 @@ const googleLogin = async (req, res) => {
 };
 
 
+
 const loginUser = async (req, res) => {
     try {
         const { login, password } = req.body;
@@ -328,30 +373,48 @@ const loginUser = async (req, res) => {
             });
         }
 
+        // Check whether this account uses password login
+        if (!user.password) {
+            return res.status(400).json({
+                success: false,
+                message: "This account uses Google login. Please continue with Google."
+            });
+        }
+
+        // Check account lock
         if (user.lockUntil && user.lockUntil > Date.now()) {
-            const remainingTime = Math.ceil((user.lockUntil - Date.now()) / 60000);
+            const remainingTime = Math.ceil(
+                (user.lockUntil - Date.now()) / 60000
+            );
+
             return res.status(423).json({
                 success: false,
                 message: `Account is locked. Please try again in ${remainingTime} minutes.`
             });
         }
 
+        // Reset expired account lock
         if (user.lockUntil && user.lockUntil <= Date.now()) {
             user.failedLoginAttempts = 0;
             user.lockUntil = null;
             await user.save();
         }
 
+        // Verify password
         const isPasswordValid = await bcrypt.compare(
             password,
             user.password
         );
 
         if (!isPasswordValid) {
-            user.failedLoginAttempts += 1;
+            user.failedLoginAttempts =
+                (user.failedLoginAttempts || 0) + 1;
 
             if (user.failedLoginAttempts >= 3) {
-                user.lockUntil = new Date(Date.now() + 30 * 60 * 1000);
+                user.lockUntil = new Date(
+                    Date.now() + 30 * 60 * 1000
+                );
+
                 await user.save();
 
                 return res.status(423).json({
@@ -362,7 +425,8 @@ const loginUser = async (req, res) => {
 
             await user.save();
 
-            const remainingAttempts = 3 - user.failedLoginAttempts;
+            const remainingAttempts =
+                3 - user.failedLoginAttempts;
 
             return res.status(401).json({
                 success: false,
@@ -370,10 +434,190 @@ const loginUser = async (req, res) => {
             });
         }
 
+        // Reset failed login attempts after correct password
         user.failedLoginAttempts = 0;
         user.lockUntil = null;
         await user.save();
 
+        // Remove previous OTP challenges for this user
+        await LoginOTP.deleteMany({
+            userId: user._id
+        });
+
+        // Generate a new OTP
+        const { otp, hashedOTP } = generateLoginOTP();
+
+        const challengeId = crypto
+            .randomBytes(24)
+            .toString("hex");
+
+        // Save OTP details in MongoDB
+        const otpRecord = await LoginOTP.create({
+            userId: user._id,
+            challengeId,
+            hashedOTP,
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+            attempts: 0,
+            maxAttempts: 5,
+            lastSentAt: new Date()
+        });
+
+        // Send OTP email
+        try {
+            await sendLoginOTPEmail(user, otp);
+
+            console.log("Login OTP email sent successfully");
+
+        } catch (emailError) {
+            await LoginOTP.deleteOne({
+                _id: otpRecord._id
+            });
+
+            console.error(
+                "Login OTP email error:",
+                emailError.message
+            );
+
+            return res.status(500).json({
+                success: false,
+                message: "Unable to send login OTP. Please try again."
+            });
+        }
+
+        // Mask email address
+        const emailParts = user.email.split("@");
+        const maskedEmail =
+            emailParts[0].charAt(0) +
+            "****@" +
+            emailParts[1];
+
+        // Do not return JWT before OTP verification
+        return res.status(200).json({
+            success: true,
+            requiresOtp: true,
+            message: "Password verified. OTP sent to your registered email.",
+            challengeId,
+            expiresIn: 300,
+            email: maskedEmail
+        });
+
+    } catch (error) {
+        console.error("Login error:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Login failed. Please try again."
+        });
+    }
+};
+
+
+const verifyLoginOTP = async (req, res) => {
+    try {
+        const { challengeId, otp } = req.body;
+
+        if (!challengeId || !otp) {
+            return res.status(400).json({
+                success: false,
+                message: "Challenge ID and OTP are required"
+            });
+        }
+
+        if (!/^\d{6}$/.test(String(otp))) {
+            return res.status(400).json({
+                success: false,
+                message: "Please enter a valid 6-digit OTP"
+            });
+        }
+
+        const otpRecord = await LoginOTP.findOne({
+            challengeId
+        });
+
+        if (!otpRecord) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid or expired OTP challenge"
+            });
+        }
+
+        // Check OTP expiration
+        if (otpRecord.expiresAt <= new Date()) {
+            await LoginOTP.deleteOne({
+                _id: otpRecord._id
+            });
+
+            return res.status(400).json({
+                success: false,
+                message: "OTP has expired. Please request a new OTP."
+            });
+        }
+
+        // Check maximum OTP attempts
+        if (otpRecord.attempts >= otpRecord.maxAttempts) {
+            await LoginOTP.deleteOne({
+                _id: otpRecord._id
+            });
+
+            return res.status(429).json({
+                success: false,
+                message: "Maximum OTP attempts exceeded. Please log in again."
+            });
+        }
+
+        // Hash the entered OTP
+        const enteredHashedOTP = crypto
+            .createHash("sha256")
+            .update(String(otp))
+            .digest("hex");
+
+        const isOTPValid = crypto.timingSafeEqual(
+            Buffer.from(enteredHashedOTP, "hex"),
+            Buffer.from(otpRecord.hashedOTP, "hex")
+        );
+
+        // Handle incorrect OTP
+        if (!isOTPValid) {
+            otpRecord.attempts += 1;
+
+            const remainingAttempts =
+                otpRecord.maxAttempts - otpRecord.attempts;
+
+            if (otpRecord.attempts >= otpRecord.maxAttempts) {
+                await otpRecord.deleteOne();
+
+                return res.status(429).json({
+                    success: false,
+                    message: "Maximum OTP attempts exceeded. Please log in again."
+                });
+            }
+
+            await otpRecord.save();
+
+            return res.status(401).json({
+                success: false,
+                message: `Incorrect OTP. You have ${remainingAttempts} attempt(s) remaining.`
+            });
+        }
+
+        // Find the user
+        const user = await User.findById(otpRecord.userId);
+
+        if (!user) {
+            await otpRecord.deleteOne();
+
+            return res.status(404).json({
+                success: false,
+                message: "User account not found"
+            });
+        }
+
+        // Delete OTP after successful verification (one-time use)
+        await LoginOTP.deleteOne({
+            _id: otpRecord._id
+        });
+
+        // Generate JWT only after OTP verification
         const token = jwt.sign(
             {
                 userId: user._id.toString(),
@@ -385,46 +629,9 @@ const loginUser = async (req, res) => {
             }
         );
 
-        try {
-            const transporter = nodemailer.createTransport({
-                host: process.env.SMTP_HOST,
-                port: Number(process.env.SMTP_PORT),
-                secure: Number(process.env.SMTP_PORT) === 465,
-                auth: {
-                    user: process.env.SMTP_USER,
-                    pass: process.env.SMTP_PASS
-                }
-            });
-
-            const loginHtml = path.join(
-                __dirname,
-                "../templates/login.html"
-            );
-
-            let emaillogin = fs.readFileSync(loginHtml, "utf8");
-
-            emaillogin = emaillogin
-                .replace(/{{fullName}}/g, escapeHtml(user.fullName));
-
-            await transporter.sendMail({
-                from: `"Banana Quest Security" <${process.env.SMTP_USER}>`,
-                to: user.email,
-                subject: "Banana Quest - Login Notification",
-                html: emaillogin
-            });
-
-            console.log("Login notification email sent successfully");
-
-        } catch (emailError) {
-            console.error(
-                "Login notification email error:",
-                emailError.message
-            );
-        }
-
         return res.status(200).json({
             success: true,
-            message: "Login successful",
+            message: "OTP verified successfully. Login successful.",
             token,
             user: {
                 id: user._id,
@@ -438,14 +645,115 @@ const loginUser = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Login error:", error.message);
+        console.error("OTP verification error:", error.message);
 
         return res.status(500).json({
             success: false,
-            message: "Login failed. Please try again."
+            message: "OTP verification failed. Please try again."
         });
     }
 };
+
+
+const resendLoginOTP = async (req, res) => {
+    try {
+        const { challengeId } = req.body;
+
+        if (!challengeId) {
+            return res.status(400).json({
+                success: false,
+                message: "Challenge ID is required"
+            });
+        }
+
+        const otpRecord = await LoginOTP.findOne({
+            challengeId
+        });
+
+        if (!otpRecord) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid OTP challenge. Please log in again."
+            });
+        }
+
+        // Check whether the maximum attempts have been reached
+        if (otpRecord.attempts >= otpRecord.maxAttempts) {
+            await LoginOTP.deleteOne({
+                _id: otpRecord._id
+            });
+
+            return res.status(429).json({
+                success: false,
+                message: "Maximum OTP attempts exceeded. Please log in again."
+            });
+        }
+
+        // Check the 60-second resend cooldown
+        const timeSinceLastSent =
+            Date.now() - new Date(otpRecord.lastSentAt).getTime();
+
+        const cooldownTime = 60 * 1000;
+
+        if (timeSinceLastSent < cooldownTime) {
+            const remainingSeconds = Math.ceil(
+                (cooldownTime - timeSinceLastSent) / 1000
+            );
+
+            return res.status(429).json({
+                success: false,
+                message: `Please wait ${remainingSeconds} seconds before requesting another OTP.`
+            });
+        }
+
+        // Find the user
+        const user = await User.findById(otpRecord.userId);
+
+        if (!user) {
+            await LoginOTP.deleteOne({
+                _id: otpRecord._id
+            });
+
+            return res.status(404).json({
+                success: false,
+                message: "User account not found"
+            });
+        }
+
+        // Generate a new OTP
+        const { otp, hashedOTP } = generateLoginOTP();
+
+        // Send the new OTP email
+        await sendLoginOTPEmail(user, otp);
+
+        // Update the existing OTP record
+        otpRecord.hashedOTP = hashedOTP;
+        otpRecord.expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+        otpRecord.attempts = 0;
+        otpRecord.lastSentAt = new Date();
+
+        await otpRecord.save();
+
+        console.log("New login OTP email sent successfully");
+
+        return res.status(200).json({
+            success: true,
+            message: "A new OTP has been sent to your registered email.",
+            challengeId,
+            expiresIn: 300
+        });
+
+    } catch (error) {
+        console.error("Resend OTP error:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to resend OTP. Please try again."
+        });
+    }
+};
+
+
 
 
 const getUserProfile = async (req, res) => {
@@ -686,6 +994,8 @@ const logoutUser = async (req, res) => {
 module.exports = {
     registerUser,
     loginUser,
+    verifyLoginOTP,
+    resendLoginOTP,
     getUserProfile,
     forgotPassword,
     resetPassword,
