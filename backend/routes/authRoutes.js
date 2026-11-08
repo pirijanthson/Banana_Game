@@ -4,6 +4,8 @@ const router = express.Router();
 const {
     registerUser,
     loginUser,
+    verifyLoginOTP,
+    resendLoginOTP,
     getUserProfile,
     forgotPassword,
     resetPassword,
@@ -20,5 +22,7 @@ router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:token", resetPassword);
 router.post("/logout", protect, logoutUser);
 router.post("/google-login", googleLogin);
+router.post("/verify-otp", verifyLoginOTP);
+router.post("/resend-otp", resendLoginOTP);
 
 module.exports = router;
