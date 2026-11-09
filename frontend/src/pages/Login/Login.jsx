@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import BananaBackground from "../../components/BananaBackground/BananaBackground";
 import "./Login.css";
 
 const API_BASE_URL = (
@@ -219,6 +220,7 @@ function Login() {
 
   return (
     <div className="login-container">
+      <BananaBackground />
       <div className="login-card">
         <div className="login-header">
           <div className="login-logo">🍌</div>

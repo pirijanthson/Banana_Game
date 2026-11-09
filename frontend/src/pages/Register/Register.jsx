@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import BananaBackground from "../../components/BananaBackground/BananaBackground";
 import "./Register.css";
 
 const API_BASE_URL = (
@@ -89,13 +90,7 @@ function Register() {
 
   return (
     <div className="register-container">
-      <div className="bg-bananas" aria-hidden="true">
-        <span className="banana b1">🍌</span>
-        <span className="banana b2">🍌</span>
-        <span className="banana b3">🍌</span>
-        <span className="banana b4">🍌</span>
-        <span className="banana b5">🍌</span>
-      </div>
+      <BananaBackground />
 
       <div className="register-card">
         <h1>Create Account 🍌</h1>

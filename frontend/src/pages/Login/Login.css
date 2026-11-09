@@ -12,43 +12,6 @@
   overflow: hidden; 
 
   background: linear-gradient(135deg, #fff8dc 0%, #ffe69a 50%, #ffd54f 100%);
-  background-size: 200% 200%;
-  animation: gradientShift 10s ease infinite;
-}
-
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.login-container::before,
-.login-container::after {
-  content: "🍌";
-  position: absolute;
-  font-size: 120px;
-  opacity: 0.1;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.login-container::before {
-  top: 10%;
-  left: 10%;
-  transform: rotate(-20deg);
-  animation: floatBg 6s ease-in-out infinite;
-}
-
-.login-container::after {
-  bottom: 10%;
-  right: 10%;
-  transform: rotate(15deg);
-  animation: floatBg 8s ease-in-out infinite reverse;
-}
-
-@keyframes floatBg {
-  0%, 100% { transform: translateY(0) rotate(-20deg); }
-  50% { transform: translateY(-30px) rotate(-10deg); }
 }
 
 .login-card {
