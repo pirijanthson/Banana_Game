@@ -3,10 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import "./Login.css";
 
 const API_BASE_URL = (
-  import.meta.env.VITE_BACKEND_URL || "http://localhost:4000"
+  import.meta.env.BACKEND_URL
 ).replace(/\/+$/, "").replace(/\/api$/i, "");
 const AUTH_API_URL = `${API_BASE_URL}/api/auth`;
-const GOOGLE_SCRIPT_URL = "https://accounts.google.com/gsi/client";
+const GOOGLE_SCRIPT_URL = import.meta.env.GOOGLE_SCRIPT_URL;
 let googleScriptPromise;
 
 function loadGoogleIdentity() {
@@ -169,7 +169,7 @@ function Login() {
   };
 
   const handleGoogleLogin = async () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const clientId = import.meta.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
       setError("Google sign-in is not configured. Please use email and password.");
       return;
