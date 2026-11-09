@@ -293,13 +293,14 @@ const googleLogin = async (req, res) => {
 
             const templatePath = path.join(
                 __dirname,
-                "../templates/login-notification.html"
+                "../templates/google-login.html"
             );
 
             let emailTemplate = fs.readFileSync(
                 templatePath,
                 "utf8"
             );
+        
 
             emailTemplate = emailTemplate
                 .replace(/{{fullName}}/g, escapeHtml(user.fullName))
