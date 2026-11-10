@@ -24,25 +24,6 @@ const difficultySettings = {
   },
 };
 
-const setGameCookie = (res, sessionId) => {
-  res.cookie("gameSessionId", sessionId.toString(), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 1000,
-    path: "/",
-  });
-};
-
-const clearGameCookie = (res) => {
-  res.clearCookie("gameSessionId", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-  });
-};
-
 // START GAME
 const startGame = async (req, res) => {
   try {
@@ -69,13 +50,10 @@ const startGame = async (req, res) => {
       currentAnswer: puzzle.solution,
     });
 
-    setGameCookie(res, gameSession._id);
-
     return res.status(201).json({
       success: true,
       message: "Game started successfully.",
       game: {
-        sessionId: gameSession._id,
         difficulty: gameSession.difficulty,
         score: gameSession.score,
         lives: gameSession.lives,
@@ -101,15 +79,7 @@ const startGame = async (req, res) => {
 // SUBMIT ANSWER
 const submitAnswer = async (req, res) => {
   try {
-    const sessionId = req.cookies?.gameSessionId;
     const { answer } = req.body;
-
-    if (!sessionId || !mongoose.Types.ObjectId.isValid(sessionId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Game session cookie is missing or invalid.",
-      });
-    }
 
     if (
       answer !== undefined &&
@@ -124,25 +94,16 @@ const submitAnswer = async (req, res) => {
     }
 
     const gameSession = await GameSession.findOne({
-      _id: sessionId,
       userId: req.user.userId,
-    }).select("+currentAnswer");
+      status: "ACTIVE",
+    })
+      .sort({ startedAt: -1 })
+      .select("+currentAnswer");
 
     if (!gameSession) {
-      clearGameCookie(res);
-
       return res.status(404).json({
         success: false,
-        message: "Game session not found.",
-      });
-    }
-
-    if (gameSession.status !== "ACTIVE") {
-      clearGameCookie(res);
-
-      return res.status(400).json({
-        success: false,
-        message: "This game session is no longer active.",
+        message: "No active game session was found for this account.",
       });
     }
 
@@ -196,7 +157,6 @@ const submitAnswer = async (req, res) => {
       gameSession.currentQuestionImage = null;
 
       await gameSession.save();
-      clearGameCookie(res);
 
       return res.status(200).json({
         success: true,
@@ -220,7 +180,6 @@ const submitAnswer = async (req, res) => {
       gameSession.currentQuestionImage = null;
 
       await gameSession.save();
-      clearGameCookie(res);
 
       return res.status(200).json({
         success: true,
@@ -251,7 +210,6 @@ const submitAnswer = async (req, res) => {
       message: "Next question loaded successfully.",
       result,
       game: {
-        sessionId: gameSession._id,
         difficulty: gameSession.difficulty,
         score: gameSession.score,
         lives: gameSession.lives,

@@ -307,4 +307,3 @@ module.exports = {
   updateUserProfile,
   changePassword
 };
-
