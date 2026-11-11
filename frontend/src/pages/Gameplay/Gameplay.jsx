@@ -66,7 +66,6 @@ function Gameplay() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const [isFinished, setIsFinished] = useState(false);
   const submissionLock = useRef(false);
   const timeoutSubmitted = useRef(false);
   const submitRef = useRef(null);
@@ -92,7 +91,7 @@ function Gameplay() {
   };
 
   const submitAnswer = useCallback(async (submittedAnswer) => {
-    if (!game || submissionLock.current || isFinished) {
+    if (!game || submissionLock.current) {
       return;
     }
 
@@ -116,8 +115,13 @@ function Gameplay() {
         setGame(result.game);
         setRemainingSeconds(result.game.questionTimeLimitSeconds);
       } else {
-        setGame(result.game);
-        setIsFinished(true);
+        navigate("/game-result", {
+          replace: true,
+          state: {
+            result: { ...game, ...result.game },
+            outcome: result.result,
+          },
+        });
       }
     } catch (requestError) {
       if (requestError.status === 401) {
@@ -129,7 +133,6 @@ function Gameplay() {
 
       if (requestError.status === 404) {
         setError("This game session is no longer active. Start a new challenge.");
-        setIsFinished(true);
         return;
       }
 
@@ -140,7 +143,7 @@ function Gameplay() {
       submissionLock.current = false;
       setIsSubmitting(false);
     }
-  }, [game, isFinished, navigate]);
+  }, [game, navigate]);
 
   useEffect(() => {
     submitRef.current = submitAnswer;
@@ -151,7 +154,7 @@ function Gameplay() {
   }, [game?.questionStartedAt]);
 
   useEffect(() => {
-    if (!game?.questionStartedAt || !game.questionTimeLimitSeconds || isFinished) {
+    if (!game?.questionStartedAt || !game.questionTimeLimitSeconds) {
       return undefined;
     }
 
@@ -170,19 +173,18 @@ function Gameplay() {
     updateTimer();
     const timerId = window.setInterval(updateTimer, 250);
     return () => window.clearInterval(timerId);
-  }, [game?.questionStartedAt, game?.questionTimeLimitSeconds, isFinished]);
+  }, [game?.questionStartedAt, game?.questionTimeLimitSeconds]);
 
   useEffect(() => {
     if (
       remainingSeconds === 0 &&
       !timeoutSubmitted.current &&
-      !submissionLock.current &&
-      !isFinished
+      !submissionLock.current
     ) {
       timeoutSubmitted.current = true;
       submitRef.current?.(undefined);
     }
-  }, [remainingSeconds, isFinished]);
+  }, [remainingSeconds]);
 
   if (!initialGame) {
     return null;
@@ -199,45 +201,7 @@ function Gameplay() {
       onLogout={handleLogout}
       username={username}
     >
-      {isFinished ? (
-        <section className="gameplay-result" aria-labelledby="gameplay-result-title">
-          <div className="gameplay-result__icon" aria-hidden="true">
-            {game?.status === "COMPLETED" ? "🏆" : "🍌"}
-          </div>
-          <p className="gameplay__eyebrow">CHALLENGE {game?.status === "COMPLETED" ? "COMPLETE" : "OVER"}</p>
-          <h1 id="gameplay-result-title">
-            {game?.status === "COMPLETED" ? "Amazing work!" : "Nice try!"}
-          </h1>
-          <p className="gameplay-result__copy">
-            {game?.status === "COMPLETED"
-              ? "You made it through every question. Keep up the great work!"
-              : error || "Every puzzle is a chance to learn. Ready to try again?"}
-          </p>
-          <div className="gameplay-result__stats">
-            <div>
-              <span>Final score</span>
-              <strong>{Number(game?.score) || 0}</strong>
-            </div>
-            <div>
-              <span>Correct answers</span>
-              <strong>{Number(game?.correctAnswers) || 0}</strong>
-            </div>
-            <div>
-              <span>Questions answered</span>
-              <strong>{Number(game?.questionsAnswered) || 0}</strong>
-            </div>
-          </div>
-          <div className="gameplay-result__actions">
-            <Link className="gameplay-button gameplay-button--primary" to="/game-selection">
-              Play again
-            </Link>
-            <Link className="gameplay-button gameplay-button--secondary" to="/dashboard">
-              Back to dashboard
-            </Link>
-          </div>
-        </section>
-      ) : (
-        <section className="gameplay" aria-labelledby="gameplay-title">
+      <section className="gameplay" aria-labelledby="gameplay-title">
           <div className="gameplay__topline">
             <Link className="gameplay__back" to="/game-selection">
               <span aria-hidden="true">←</span> Leave game
@@ -316,7 +280,7 @@ function Gameplay() {
           {error && (
             <p className="gameplay__error" role="alert">
               {error}
-              {remainingSeconds === 0 && !isFinished && (
+              {remainingSeconds === 0 && (
                 <button
                   type="button"
                   onClick={() => submitAnswer(undefined)}
@@ -367,8 +331,7 @@ function Gameplay() {
               A correct answer earns points!
             </p>
           </form>
-        </section>
-      )}
+      </section>
     </DashboardLayout>
   );
 }
