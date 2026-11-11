@@ -5,6 +5,7 @@ import ForgotPassword from "./pages/ForgotPassword/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword/ResetPassword";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import GameSelection from "./pages/GameSelection/GameSelection";
+import Gameplay from "./pages/Gameplay/Gameplay";
 
 function App() {
   return (
@@ -19,7 +20,7 @@ function App() {
 
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/game-selection" element={<GameSelection />} />
-      <Route path="/gameplay" element={<div>Gameplay Page</div>} />
+      <Route path="/gameplay" element={<Gameplay />} />
       <Route path="/game-result" element={<div>Game Result Page</div>} />
 
       <Route path="/game-history" element={<div>Game History Page</div>} />
