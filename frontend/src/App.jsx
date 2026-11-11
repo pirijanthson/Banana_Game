@@ -4,6 +4,7 @@ import Register from "./pages/Register/Register";
 import ForgotPassword from "./pages/ForgotPassword/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword/ResetPassword";
 import Dashboard from "./pages/Dashboard/Dashboard";
+import GameSelection from "./pages/GameSelection/GameSelection";
 
 function App() {
   return (
@@ -17,7 +18,7 @@ function App() {
       <Route path="/reset-password/:token" element={<ResetPassword />} />
 
       <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/game-selection" element={<div>Game Selection Page</div>} />
+      <Route path="/game-selection" element={<GameSelection />} />
       <Route path="/gameplay" element={<div>Gameplay Page</div>} />
       <Route path="/game-result" element={<div>Game Result Page</div>} />
 
