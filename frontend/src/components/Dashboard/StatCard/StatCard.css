@@ -1,0 +1,73 @@
+.dashboard-stat-card {
+  min-height: 99px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 18px;
+  border: 1px solid #f0ede4;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 5px 16px rgba(65, 53, 14, 0.035);
+}
+
+.dashboard-stat-card__icon {
+  width: 43px;
+  height: 43px;
+  display: grid;
+  flex: 0 0 43px;
+  place-items: center;
+  border-radius: 13px;
+  background: #fff4ce;
+  font-size: 20px;
+}
+
+.dashboard-stat-card--games .dashboard-stat-card__icon {
+  background: #e8f4e3;
+}
+
+.dashboard-stat-card--accuracy .dashboard-stat-card__icon {
+  background: #e7f2fc;
+}
+
+.dashboard-stat-card--best .dashboard-stat-card__icon {
+  background: #f5eafa;
+}
+
+.dashboard-stat-card__label {
+  color: var(--dash-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dashboard-stat-card__value {
+  margin-top: 3px;
+  color: var(--dash-ink);
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: -0.7px;
+  line-height: 1.2;
+}
+
+@media (max-width: 650px) {
+  .dashboard-stat-card {
+    min-height: 82px;
+    gap: 9px;
+    padding: 12px;
+  }
+
+  .dashboard-stat-card__icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    border-radius: 11px;
+    font-size: 17px;
+  }
+
+  .dashboard-stat-card__label {
+    font-size: 10px;
+  }
+
+  .dashboard-stat-card__value {
+    font-size: 20px;
+  }
+}

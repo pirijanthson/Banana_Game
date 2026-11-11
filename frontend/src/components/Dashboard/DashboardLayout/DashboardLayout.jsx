@@ -1,0 +1,40 @@
+import { Link } from "react-router-dom";
+import Navbar from "../Navbar/Navbar";
+import "./DashboardLayout.css";
+
+const CURRENT_YEAR = new Date().getFullYear();
+
+function DashboardLayout({ children, displayName, onLogout, username }) {
+  return (
+    <main className="dashboard-page">
+      <div className="dashboard-shell">
+        <Navbar displayName={displayName} onLogout={onLogout} />
+        <div className="dashboard-layout-main">{children}</div>
+        <footer className="dashboard-footer">
+          <div className="dashboard-footer__main">
+            <Link className="dashboard-footer__brand" to="/dashboard">
+              <span aria-hidden="true">🍌</span>
+              <span>banana<span>quest</span></span>
+            </Link>
+            <p>Made for curious minds</p>
+            <nav className="dashboard-footer__nav" aria-label="Footer navigation">
+              <Link to="/game-selection">Play</Link>
+              <Link to="/game-history">Game history</Link>
+              <Link to="/leaderboard">Leaderboard</Link>
+              <Link to="/profile">Profile</Link>
+            </nav>
+          </div>
+          <div className="dashboard-footer__bottom">
+            <span>© {CURRENT_YEAR} Banana Quest</span>
+            <span>
+              {username ? `Playing as @${username}` : "Thanks for playing"}
+              <span aria-hidden="true"> 🍌</span>
+            </span>
+          </div>
+        </footer>
+      </div>
+    </main>
+  );
+}
+
+export default DashboardLayout;
