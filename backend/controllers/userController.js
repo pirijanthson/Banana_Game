@@ -4,6 +4,10 @@ const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
+const {
+  normalizeSettings,
+  validateSettings
+} = require("../utils/settings");
 
 // Email transporter
 const transporter = nodemailer.createTransport({
@@ -24,6 +28,71 @@ const escapeHtml = (value) => {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+};
+
+const getUserSettings = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      settings: normalizeSettings(user.settings),
+      hasSavedSettings: Boolean(user.settings)
+    });
+  } catch (error) {
+    console.error("Get User Settings Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load your settings."
+    });
+  }
+};
+
+const updateUserSettings = async (req, res) => {
+  try {
+    const settings = req.body && req.body.settings;
+    const validationError = validateSettings(settings);
+
+    if (validationError) {
+      return res.status(400).json({
+        success: false,
+        message: validationError
+      });
+    }
+
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      });
+    }
+
+    const currentSettings = user.settings
+      ? user.settings.toObject()
+      : {};
+    user.settings = normalizeSettings({ ...currentSettings, ...settings });
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      settings: normalizeSettings(user.settings)
+    });
+  } catch (error) {
+    console.error("Update User Settings Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to save your settings."
+    });
+  }
 };
 
 // Update User Profile
@@ -304,6 +373,8 @@ const changePassword = async (req, res) => {
 };
 
 module.exports = {
+  getUserSettings,
+  updateUserSettings,
   updateUserProfile,
   changePassword
 };

@@ -1,16 +1,14 @@
 import { Link } from "react-router-dom";
 import Navbar from "../Navbar/Navbar";
-import {
-  getAppSettings,
-  getDashboardBackground,
-} from "../../../utils/settings";
+import { getDashboardBackground } from "../../../utils/settings";
+import { useAppSettings } from "../../../context/useAppSettings";
 import "./DashboardLayout.css";
 import "../DashboardTheme.css";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 function DashboardLayout({ children, displayName, onLogout, username }) {
-  const settings = getAppSettings();
+  const { settings } = useAppSettings();
   return (
     <main
       className="dashboard-page"

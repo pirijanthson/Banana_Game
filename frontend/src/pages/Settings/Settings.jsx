@@ -4,9 +4,8 @@ import DashboardLayout from "../../components/Dashboard/DashboardLayout/Dashboar
 import {
   DEFAULT_SETTINGS,
   getDashboardBackground,
-  getAppSettings,
-  saveAppSettings,
 } from "../../utils/settings";
+import { useAppSettings } from "../../context/useAppSettings";
 import "./Settings.css";
 
 function readStoredUser() {
@@ -28,12 +27,18 @@ function getDisplayName(user) {
 
 function Settings() {
   const navigate = useNavigate();
+  const {
+    settings,
+    isLoading,
+    loadError,
+    saveSettings,
+  } = useAppSettings();
   const user = readStoredUser();
   const username = typeof user.username === "string" ? user.username.trim() : "";
-  const [settings, setSettings] = useState(getAppSettings);
   const backgroundColor = getDashboardBackground(settings);
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!window.localStorage.getItem("token")) {
@@ -47,16 +52,18 @@ function Settings() {
     navigate("/login", { replace: true });
   };
 
-  const updateSettings = (updates) => {
+  const updateSettings = async (updates) => {
     setSaveError("");
     setSaveMessage("");
+    setIsSaving(true);
 
     try {
-      const updatedSettings = saveAppSettings({ ...settings, ...updates });
-      setSettings(updatedSettings);
-      setSaveMessage("Your settings have been saved on this browser.");
-    } catch {
-      setSaveError("Unable to save your settings in this browser. Please try again.");
+      await saveSettings({ ...settings, ...updates });
+      setSaveMessage("Your settings have been saved to your account.");
+    } catch (error) {
+      setSaveError(error.message || "Unable to save your settings. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -93,16 +100,20 @@ function Settings() {
           <span className="settings-page__hero-banana" aria-hidden="true">🍌</span>
         </header>
 
-        {(saveMessage || saveError) && (
+        {(saveMessage || saveError || loadError) && (
           <p
-            className={`settings-page__message${saveError ? " settings-page__message--error" : ""}`}
-            role={saveError ? "alert" : "status"}
+            className={`settings-page__message${saveError || loadError ? " settings-page__message--error" : ""}`}
+            role={saveError || loadError ? "alert" : "status"}
           >
-            {saveError || saveMessage}
+            {saveError || loadError || saveMessage}
           </p>
         )}
 
-        <div className="settings-page__sections">
+        <fieldset
+          className="settings-page__sections"
+          disabled={isLoading || isSaving}
+          aria-busy={isLoading || isSaving}
+        >
           <section className="settings-card" aria-labelledby="settings-appearance-title">
             <div className="settings-card__heading">
               <span className="settings-card__icon settings-card__icon--appearance" aria-hidden="true">🎨</span>
@@ -261,11 +272,11 @@ function Settings() {
               />
             </label>
           </section>
-        </div>
+        </fieldset>
 
         <div className="settings-page__footer">
-          <p>Your preferences are stored locally in this browser.</p>
-          <button type="button" onClick={handleReset}>
+          <p>Your preferences are saved to your account.</p>
+          <button type="button" onClick={handleReset} disabled={isLoading || isSaving}>
             Reset to defaults
           </button>
         </div>
