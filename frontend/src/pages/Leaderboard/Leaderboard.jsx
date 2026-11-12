@@ -181,7 +181,7 @@ function Leaderboard() {
               <div className="leaderboard__panel-heading">
                 <div>
                   <p className="leaderboard__eyebrow">THE HIGH-SCORE CLUB</p>
-                  <h2 id="top-players-title">Top players</h2>
+                  <h2 id="top-players-title">All players</h2>
                 </div>
                 <span className="leaderboard__panel-note">Ranked by total points</span>
               </div>
@@ -192,7 +192,7 @@ function Leaderboard() {
                   Loading the leaderboard…
                 </div>
               ) : players.length > 0 ? (
-                <ol className="leaderboard__list" aria-label="Top ten players">
+                <ol className="leaderboard__list" aria-label="Player rankings">
                   {players.map((player, index) => {
                     const playerName =
                       typeof player.username === "string" && player.username.trim()

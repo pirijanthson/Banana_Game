@@ -412,9 +412,6 @@ const getLeaderboard = async (req, res) => {
         },
       },
       {
-        $limit: 10,
-      },
-      {
         $lookup: {
           from: "users",
           localField: "_id",
@@ -482,7 +479,7 @@ const getMyLeaderboardRank = async (req, res) => {
     ]);
 
     const myRank = leaderboard.findIndex(
-      (player) => player._id.toString() === req.user._id.toString()
+      (player) => player._id.toString() === req.user.userId.toString()
     );
 
     if (myRank === -1) {
