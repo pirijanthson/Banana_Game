@@ -10,6 +10,7 @@ import GameResult from "./pages/GameResult/GameResult";
 import GameHistory from "./pages/GameHistory/GameHistory";
 import ScoreSummary from "./pages/ScoreSummary/ScoreSummary";
 import ScoreStatistics from "./pages/ScoreStatistics/ScoreStatistics";
+import Leaderboard from "./pages/Leaderboard/Leaderboard";
 
 function App() {
   return (
@@ -30,7 +31,7 @@ function App() {
       <Route path="/game-history" element={<GameHistory />} />
       <Route path="/score-summary" element={<ScoreSummary />} />
       <Route path="/score-statistics" element={<ScoreStatistics />} />
-      <Route path="/leaderboard" element={<div>Leaderboard Page</div>} />
+      <Route path="/leaderboard" element={<Leaderboard />} />
       <Route path="/my-rank" element={<div>My Rank Page</div>} />
       <Route path="/profile" element={<div>Profile Page</div>} />
       <Route path="/change-password" element={<div>Change Password Page</div>} />
