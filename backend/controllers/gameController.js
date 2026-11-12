@@ -24,6 +24,21 @@ const difficultySettings = {
   },
 };
 
+function formatGameForClient(gameSession) {
+  return {
+    id: gameSession._id.toString(),
+    difficulty: gameSession.difficulty,
+    score: gameSession.score,
+    lives: gameSession.lives,
+    totalQuestions: gameSession.totalQuestions,
+    questionsAnswered: gameSession.questionsAnswered,
+    questionTimeLimitSeconds: gameSession.questionTimeLimitSeconds,
+    questionStartedAt: gameSession.questionStartedAt,
+    status: gameSession.status,
+    question: gameSession.currentQuestionImage,
+  };
+}
+
 // START GAME
 const startGame = async (req, res) => {
   try {
@@ -33,6 +48,19 @@ const startGame = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Invalid difficulty. Choose EASY, MEDIUM, or HARD.",
+      });
+    }
+
+    const activeGame = await GameSession.findOne({
+      userId: req.user.userId,
+      status: "ACTIVE",
+    }).sort({ startedAt: -1 });
+
+    if (activeGame) {
+      return res.status(200).json({
+        success: true,
+        message: "Your active game has been resumed.",
+        game: formatGameForClient(activeGame),
       });
     }
 
@@ -53,18 +81,7 @@ const startGame = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Game started successfully.",
-      game: {
-        difficulty: gameSession.difficulty,
-        score: gameSession.score,
-        lives: gameSession.lives,
-        totalQuestions: gameSession.totalQuestions,
-        questionsAnswered: gameSession.questionsAnswered,
-        questionTimeLimitSeconds:
-          gameSession.questionTimeLimitSeconds,
-        questionStartedAt: gameSession.questionStartedAt,
-        status: gameSession.status,
-        question: gameSession.currentQuestionImage,
-      },
+      game: formatGameForClient(gameSession),
     });
   } catch (error) {
     console.error("Start Game Error:", error.message);
@@ -76,10 +93,64 @@ const startGame = async (req, res) => {
   }
 };
 
+// GET ACTIVE GAME
+const getActiveGame = async (req, res) => {
+  try {
+    const filter = {
+      userId: req.user.userId,
+      status: "ACTIVE",
+    };
+
+    if (req.params.gameId) {
+      if (!mongoose.Types.ObjectId.isValid(req.params.gameId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid game session ID.",
+        });
+      }
+      filter._id = new mongoose.Types.ObjectId(req.params.gameId);
+    }
+
+    const gameSession = await GameSession.findOne(filter).sort({ startedAt: -1 });
+
+    if (req.params.gameId && !gameSession) {
+      return res.status(404).json({
+        success: false,
+        message: "This game is no longer active.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: gameSession
+        ? "Active game retrieved successfully."
+        : "No active game was found.",
+      game: gameSession ? formatGameForClient(gameSession) : null,
+    });
+  } catch (error) {
+    console.error("Get Active Game Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to retrieve your active game.",
+    });
+  }
+};
+
 // SUBMIT ANSWER
 const submitAnswer = async (req, res) => {
   try {
-    const { answer } = req.body;
+    const { answer, gameId } = req.body;
+
+    if (
+      gameId !== undefined &&
+      (typeof gameId !== "string" || !mongoose.Types.ObjectId.isValid(gameId))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid game session ID.",
+      });
+    }
 
     if (
       answer !== undefined &&
@@ -93,10 +164,15 @@ const submitAnswer = async (req, res) => {
       });
     }
 
-    const gameSession = await GameSession.findOne({
+    const filter = {
       userId: req.user.userId,
       status: "ACTIVE",
-    })
+    };
+    if (gameId) {
+      filter._id = new mongoose.Types.ObjectId(gameId);
+    }
+
+    const gameSession = await GameSession.findOne(filter)
       .sort({ startedAt: -1 })
       .select("+currentAnswer");
 
@@ -162,14 +238,7 @@ const submitAnswer = async (req, res) => {
         success: true,
         message: "Game over. You have no remaining lives.",
         result,
-        game: {
-          score: gameSession.score,
-          lives: gameSession.lives,
-          questionsAnswered: gameSession.questionsAnswered,
-          totalQuestions: gameSession.totalQuestions,
-          correctAnswers: gameSession.correctAnswers,
-          status: gameSession.status,
-        },
+        game: formatGameForClient(gameSession),
       });
     }
 
@@ -185,14 +254,7 @@ const submitAnswer = async (req, res) => {
         success: true,
         message: "Congratulations! You completed the game.",
         result,
-        game: {
-          score: gameSession.score,
-          lives: gameSession.lives,
-          questionsAnswered: gameSession.questionsAnswered,
-          totalQuestions: gameSession.totalQuestions,
-          correctAnswers: gameSession.correctAnswers,
-          status: gameSession.status,
-        },
+        game: formatGameForClient(gameSession),
       });
     }
 
@@ -209,18 +271,7 @@ const submitAnswer = async (req, res) => {
       success: true,
       message: "Next question loaded successfully.",
       result,
-      game: {
-        difficulty: gameSession.difficulty,
-        score: gameSession.score,
-        lives: gameSession.lives,
-        questionsAnswered: gameSession.questionsAnswered,
-        totalQuestions: gameSession.totalQuestions,
-        questionTimeLimitSeconds:
-          gameSession.questionTimeLimitSeconds,
-        questionStartedAt: gameSession.questionStartedAt,
-        status: gameSession.status,
-        question: gameSession.currentQuestionImage,
-      },
+      game: formatGameForClient(gameSession),
     });
   } catch (error) {
     console.error("Submit Answer Error:", error.message);
@@ -513,6 +564,7 @@ const getMyLeaderboardRank = async (req, res) => {
 
 module.exports = {
   startGame,
+  getActiveGame,
   submitAnswer,
   getGameHistory,
   getScoreSummary,

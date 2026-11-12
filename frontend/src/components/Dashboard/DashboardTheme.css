@@ -1,0 +1,100 @@
+.dashboard-page[data-theme="dark"] {
+  --dash-ink: #f0eee7;
+  --dash-muted: #b7b3a8;
+  --dash-line: #3d4149;
+  color: var(--dash-ink);
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-header,
+.dashboard-page[data-theme="dark"] .dashboard-footer,
+.dashboard-page[data-theme="dark"] .dashboard-footer__bottom {
+  border-color: var(--dash-line);
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-brand,
+.dashboard-page[data-theme="dark"] .dashboard-nav a,
+.dashboard-page[data-theme="dark"] .dashboard-logout,
+.dashboard-page[data-theme="dark"] .dashboard-footer__brand,
+.dashboard-page[data-theme="dark"] .dashboard-footer__nav a {
+  color: #e8e5dc;
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-nav a:hover,
+.dashboard-page[data-theme="dark"] .dashboard-nav a.is-active,
+.dashboard-page[data-theme="dark"] .dashboard-logout:hover,
+.dashboard-page[data-theme="dark"] .dashboard-footer__nav a:hover {
+  color: #ffd86d;
+}
+
+.dashboard-page[data-theme="dark"] [class*="__panel"],
+.dashboard-page[data-theme="dark"] [class*="-panel"],
+.dashboard-page[data-theme="dark"] [class*="-card"],
+.dashboard-page[data-theme="dark"] [class*="-stat"],
+.dashboard-page[data-theme="dark"] [class*="__identity"],
+.dashboard-page[data-theme="dark"] [class*="__details"] {
+  border-color: #3d4149 !important;
+  background-color: #292c33 !important;
+  color: #f0eee7 !important;
+}
+
+.dashboard-page[data-theme="dark"] [class*="__panel"] *,
+.dashboard-page[data-theme="dark"] [class*="-panel"] *,
+.dashboard-page[data-theme="dark"] [class*="-card"] *,
+.dashboard-page[data-theme="dark"] [class*="-stat"] *,
+.dashboard-page[data-theme="dark"] [class*="__identity"] *,
+.dashboard-page[data-theme="dark"] [class*="__details"] * {
+  color: #f0eee7;
+}
+
+.dashboard-page[data-theme="dark"] input:not([type="checkbox"]):not([type="color"]),
+.dashboard-page[data-theme="dark"] select,
+.dashboard-page[data-theme="dark"] textarea {
+  border-color: #4a4e57 !important;
+  background-color: #202229 !important;
+  color: #f0eee7 !important;
+}
+
+.dashboard-page[data-theme="dark"] input[readonly] {
+  background-color: #30333a !important;
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-empty-state,
+.dashboard-page[data-theme="dark"] .profile-page__loading,
+.dashboard-page[data-theme="dark"] .change-password__hint {
+  color: #c3bfb4;
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-game-status {
+  background: #3b3e45;
+  color: #e8e5dc;
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-game-status--active {
+  background: #594a25;
+  color: #ffdf86;
+}
+
+.dashboard-page[data-text-size="large"] :is(
+  h1,
+  h2,
+  h3,
+  p,
+  a,
+  button,
+  label,
+  input,
+  select,
+  strong,
+  small
+) {
+  font-size: 1.08em !important;
+}
+
+.dashboard-page[data-reduce-motion="true"] *,
+.dashboard-page[data-reduce-motion="true"] *::before,
+.dashboard-page[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+}

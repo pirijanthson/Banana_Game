@@ -23,6 +23,9 @@ function Sidebar() {
         <Link to="/profile">
           <span aria-hidden="true">👤</span> Your profile <span aria-hidden="true">→</span>
         </Link>
+        <Link to="/settings">
+          <span aria-hidden="true">⚙️</span> Settings <span aria-hidden="true">→</span>
+        </Link>
       </section>
     </aside>
   );

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/Dashboard/DashboardLayout/DashboardLayout";
+import { getAppSettings } from "../../utils/settings";
+import { playGameSound } from "../../utils/gameSounds";
 import "./Gameplay.css";
 
 const API_BASE_URL = (import.meta.env.BACKEND_URL || "")
@@ -23,14 +25,17 @@ function formatDifficulty(difficulty) {
     : "Puzzle";
 }
 
-async function submitGameAnswer(token, answer) {
+async function submitGameAnswer(token, answer, gameId) {
   const response = await fetch(`${GAMES_API_URL}/answer`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(answer === undefined ? {} : { answer }),
+    body: JSON.stringify({
+      ...(answer === undefined ? {} : { answer }),
+      gameId,
+    }),
   });
 
   let result;
@@ -53,11 +58,41 @@ async function submitGameAnswer(token, answer) {
   return result;
 }
 
+async function fetchActiveGame(token, gameId) {
+  const activeGamePath = gameId
+    ? `active/${encodeURIComponent(gameId)}`
+    : "active";
+  const response = await fetch(`${GAMES_API_URL}/${activeGamePath}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    const error = new Error(
+      `The server returned an unexpected response (HTTP ${response.status}).`,
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  if (!response.ok || result?.success !== true) {
+    const error = new Error(result?.message || "Unable to resume your game.");
+    error.status = response.status;
+    throw error;
+  }
+
+  return result.game;
+}
+
 function Gameplay() {
   const navigate = useNavigate();
   const location = useLocation();
   const initialGame = location.state?.game;
+  const initialGameId = location.state?.gameId;
   const [game, setGame] = useState(initialGame || null);
+  const [isLoadingGame, setIsLoadingGame] = useState(!initialGame);
   const [answer, setAnswer] = useState("");
   const [remainingSeconds, setRemainingSeconds] = useState(
     initialGame?.questionTimeLimitSeconds || 0,
@@ -68,9 +103,17 @@ function Gameplay() {
   const [imageFailed, setImageFailed] = useState(false);
   const submissionLock = useRef(false);
   const timeoutSubmitted = useRef(false);
+  const timerWarningPlayedFor = useRef(null);
   const submitRef = useRef(null);
 
   const user = readStoredUser();
+  const {
+    showAnswerFeedback,
+    soundEffects,
+    timerWarnings,
+    timerWarningSeconds,
+    showProgress,
+  } = getAppSettings();
   const username =
     typeof user.username === "string" ? user.username.trim() : "";
   const displayName =
@@ -79,10 +122,53 @@ function Gameplay() {
     "Player";
 
   useEffect(() => {
-    if (!initialGame) {
-      navigate("/game-selection", { replace: true });
+    if (initialGame) {
+      return undefined;
     }
-  }, [initialGame, navigate]);
+
+    let isCurrent = true;
+    const token = window.localStorage.getItem("token");
+
+    if (!token) {
+      navigate("/login", { replace: true });
+      return () => {
+        isCurrent = false;
+      };
+    }
+
+    const loadActiveGame = async () => {
+      try {
+        const activeGame = await fetchActiveGame(token, initialGameId);
+        if (isCurrent) {
+          if (activeGame) {
+            setGame(activeGame);
+            setError("");
+          } else {
+            navigate("/game-selection", { replace: true });
+          }
+        }
+      } catch (requestError) {
+        if (requestError.status === 401) {
+          window.localStorage.removeItem("token");
+          window.localStorage.removeItem("user");
+          navigate("/login", { replace: true });
+          return;
+        }
+        if (isCurrent) {
+          setError(requestError.message || "Unable to resume your game.");
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoadingGame(false);
+        }
+      }
+    };
+
+    loadActiveGame();
+    return () => {
+      isCurrent = false;
+    };
+  }, [initialGame, initialGameId, navigate]);
 
   const handleLogout = () => {
     window.localStorage.removeItem("token");
@@ -106,8 +192,11 @@ function Gameplay() {
     setError("");
 
     try {
-      const result = await submitGameAnswer(token, submittedAnswer);
+      const result = await submitGameAnswer(token, submittedAnswer, game.id);
       setFeedback(result.result || "");
+      if (soundEffects && result.result) {
+        playGameSound(result.result);
+      }
       setAnswer("");
       setImageFailed(false);
 
@@ -143,7 +232,7 @@ function Gameplay() {
       submissionLock.current = false;
       setIsSubmitting(false);
     }
-  }, [game, navigate]);
+  }, [game, navigate, soundEffects]);
 
   useEffect(() => {
     submitRef.current = submitAnswer;
@@ -151,6 +240,7 @@ function Gameplay() {
 
   useEffect(() => {
     timeoutSubmitted.current = false;
+    timerWarningPlayedFor.current = null;
   }, [game?.questionStartedAt]);
 
   useEffect(() => {
@@ -177,6 +267,24 @@ function Gameplay() {
 
   useEffect(() => {
     if (
+      timerWarnings &&
+      soundEffects &&
+      remainingSeconds === timerWarningSeconds &&
+      timerWarningPlayedFor.current !== game?.questionStartedAt
+    ) {
+      timerWarningPlayedFor.current = game?.questionStartedAt;
+      playGameSound("TIME_WARNING");
+    }
+  }, [
+    game?.questionStartedAt,
+    remainingSeconds,
+    soundEffects,
+    timerWarnings,
+    timerWarningSeconds,
+  ]);
+
+  useEffect(() => {
+    if (
       remainingSeconds === 0 &&
       !timeoutSubmitted.current &&
       !submissionLock.current
@@ -186,14 +294,36 @@ function Gameplay() {
     }
   }, [remainingSeconds]);
 
-  if (!initialGame) {
-    return null;
-  }
-
   const progress = game?.totalQuestions
     ? Math.min((game.questionsAnswered / game.totalQuestions) * 100, 100)
     : 0;
-  const isLowTime = remainingSeconds <= 10;
+  const isLowTime =
+    timerWarnings && remainingSeconds <= timerWarningSeconds;
+
+  if (isLoadingGame || !game) {
+    return (
+      <DashboardLayout
+        displayName={displayName}
+        onLogout={handleLogout}
+        username={username}
+      >
+        <section className="gameplay" aria-live="polite">
+          {isLoadingGame ? (
+            <p>Loading your saved game…</p>
+          ) : (
+            <>
+              <p className="gameplay__error" role="alert">
+                {error || "Your saved game could not be loaded."}
+              </p>
+              <Link className="gameplay__back" to="/dashboard">
+                Return to dashboard
+              </Link>
+            </>
+          )}
+        </section>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -213,7 +343,11 @@ function Gameplay() {
 
           <div className="gameplay__heading">
             <div>
-              <p className="gameplay__eyebrow">QUESTION {Math.min((game?.questionsAnswered || 0) + 1, game?.totalQuestions || 1)} OF {game?.totalQuestions || 1}</p>
+              {showProgress && (
+                <p className="gameplay__eyebrow">
+                  QUESTION {Math.min((game?.questionsAnswered || 0) + 1, game?.totalQuestions || 1)} OF {game?.totalQuestions || 1}
+                </p>
+              )}
               <h1 id="gameplay-title">Solve the banana puzzle</h1>
             </div>
             <div
@@ -228,16 +362,18 @@ function Gameplay() {
             </div>
           </div>
 
-          <div
-            className="gameplay__progress"
-            role="progressbar"
-            aria-label="Game progress"
-            aria-valuemin={0}
-            aria-valuemax={game?.totalQuestions || 1}
-            aria-valuenow={game?.questionsAnswered || 0}
-          >
-            <span style={{ width: `${progress}%` }} />
-          </div>
+          {showProgress && (
+            <div
+              className="gameplay__progress"
+              role="progressbar"
+              aria-label="Game progress"
+              aria-valuemin={0}
+              aria-valuemax={game?.totalQuestions || 1}
+              aria-valuenow={game?.questionsAnswered || 0}
+            >
+              <span style={{ width: `${progress}%` }} />
+            </div>
+          )}
 
           <div className="gameplay__details">
             <span>⭐ <strong>{Number(game?.score) || 0}</strong> points</span>
@@ -264,7 +400,7 @@ function Gameplay() {
             )}
           </div>
 
-          {feedback && (
+          {showAnswerFeedback && feedback && (
             <p
               className={`gameplay__feedback gameplay__feedback--${feedback.toLowerCase()}`}
               role="status"
