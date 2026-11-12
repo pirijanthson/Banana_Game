@@ -9,6 +9,7 @@ import Gameplay from "./pages/Gameplay/Gameplay";
 import GameResult from "./pages/GameResult/GameResult";
 import GameHistory from "./pages/GameHistory/GameHistory";
 import ScoreSummary from "./pages/ScoreSummary/ScoreSummary";
+import ScoreStatistics from "./pages/ScoreStatistics/ScoreStatistics";
 
 function App() {
   return (
@@ -28,7 +29,7 @@ function App() {
 
       <Route path="/game-history" element={<GameHistory />} />
       <Route path="/score-summary" element={<ScoreSummary />} />
-      <Route path="/score-statistics" element={<div>Score Statistics Page</div>} />
+      <Route path="/score-statistics" element={<ScoreStatistics />} />
       <Route path="/leaderboard" element={<div>Leaderboard Page</div>} />
       <Route path="/my-rank" element={<div>My Rank Page</div>} />
       <Route path="/profile" element={<div>Profile Page</div>} />

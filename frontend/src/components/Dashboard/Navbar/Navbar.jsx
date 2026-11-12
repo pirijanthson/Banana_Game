@@ -5,6 +5,7 @@ const navigationItems = [
   { label: "Dashboard", to: "/dashboard" },
   { label: "Game history", to: "/game-history" },
   { label: "Score summary", to: "/score-summary" },
+  { label: "Score statistics", to: "/score-statistics" },
   { label: "Leaderboard", to: "/leaderboard" },
   { label: "Profile", to: "/profile" },
 ];
