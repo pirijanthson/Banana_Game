@@ -7,7 +7,6 @@ const navigationItems = [
   { label: "Score summary", to: "/score-summary" },
   { label: "Score statistics", to: "/score-statistics" },
   { label: "Leaderboard", to: "/leaderboard" },
-  { label: "Profile", to: "/profile" },
 ];
 
 function getInitials(name) {

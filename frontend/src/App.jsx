@@ -11,6 +11,7 @@ import GameHistory from "./pages/GameHistory/GameHistory";
 import ScoreSummary from "./pages/ScoreSummary/ScoreSummary";
 import ScoreStatistics from "./pages/ScoreStatistics/ScoreStatistics";
 import Leaderboard from "./pages/Leaderboard/Leaderboard";
+import Profile from "./pages/Profile/Profile";
 
 function App() {
   return (
@@ -33,7 +34,7 @@ function App() {
       <Route path="/score-statistics" element={<ScoreStatistics />} />
       <Route path="/leaderboard" element={<Leaderboard />} />
       <Route path="/my-rank" element={<Navigate to="/leaderboard" replace />} />
-      <Route path="/profile" element={<div>Profile Page</div>} />
+      <Route path="/profile" element={<Profile />} />
       <Route path="/change-password" element={<div>Change Password Page</div>} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
