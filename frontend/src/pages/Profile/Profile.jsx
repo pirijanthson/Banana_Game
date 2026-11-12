@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/Dashboard/DashboardLayout/DashboardLayout";
 import "./Profile.css";
 
@@ -333,6 +333,9 @@ function Profile() {
                 </button>
               </form>
             )}
+            <Link className="profile-page__password-link" to="/change-password">
+              Change password <span aria-hidden="true">→</span>
+            </Link>
           </section>
         </div>
       </section>
