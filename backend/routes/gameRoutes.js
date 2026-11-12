@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const { startGame,
+        getActiveGame,
         submitAnswer,
         getGameHistory,
         getScoreSummary,
@@ -13,6 +14,8 @@ const { startGame,
 const { protect } = require("../middleware/authMiddleware");
 
 router.post("/start", protect, startGame);
+router.get("/active/:gameId", protect, getActiveGame);
+router.get("/active", protect, getActiveGame);
 router.post("/answer", protect, submitAnswer);
 router.get("/history", protect, getGameHistory);
 router.get("/scores/summary", protect, getScoreSummary);

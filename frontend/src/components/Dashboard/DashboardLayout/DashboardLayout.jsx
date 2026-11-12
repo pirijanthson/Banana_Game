@@ -1,12 +1,24 @@
 import { Link } from "react-router-dom";
 import Navbar from "../Navbar/Navbar";
+import {
+  getAppSettings,
+  getDashboardBackground,
+} from "../../../utils/settings";
 import "./DashboardLayout.css";
+import "../DashboardTheme.css";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 function DashboardLayout({ children, displayName, onLogout, username }) {
+  const settings = getAppSettings();
   return (
-    <main className="dashboard-page">
+    <main
+      className="dashboard-page"
+      data-theme={settings.theme}
+      data-text-size={settings.textSize}
+      data-reduce-motion={settings.reduceMotion}
+      style={{ "--dashboard-page-background": getDashboardBackground(settings) }}
+    >
       <div className="dashboard-shell">
         <Navbar displayName={displayName} onLogout={onLogout} />
         <div className="dashboard-layout-main">{children}</div>
@@ -22,6 +34,7 @@ function DashboardLayout({ children, displayName, onLogout, username }) {
               <Link to="/game-history">Game history</Link>
               <Link to="/leaderboard">Leaderboard</Link>
               <Link to="/profile">Profile</Link>
+              <Link to="/settings">Settings</Link>
             </nav>
           </div>
           <div className="dashboard-footer__bottom">

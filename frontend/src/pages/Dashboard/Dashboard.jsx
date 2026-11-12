@@ -137,7 +137,13 @@ function Dashboard() {
   const scores = dashboardData?.summary?.scores;
   const statistics = dashboardData?.statistics?.statistics;
   const games = dashboardData?.history?.games || [];
-  const recentGames = games.slice(0, 5);
+  const activeGames = games.filter(
+    (game) => String(game.status).toUpperCase() === "ACTIVE",
+  );
+  const otherRecentGames = games
+    .filter((game) => String(game.status).toUpperCase() !== "ACTIVE")
+    .slice(0, Math.max(0, 5 - activeGames.length));
+  const recentGames = [...activeGames, ...otherRecentGames];
 
   return (
     <DashboardLayout
@@ -231,11 +237,23 @@ function Dashboard() {
             ) : recentGames.length > 0 ? (
               <div className="dashboard-game-list">
                 {recentGames.map((game) => (
-                  <article className="dashboard-game-row" key={game._id}>
+                  <article
+                    className={`dashboard-game-row${String(game.status).toUpperCase() === "ACTIVE" ? " dashboard-game-row--active" : ""}`}
+                    key={game._id || game.id}
+                  >
                     <span className="dashboard-game-icon" aria-hidden="true">🍌</span>
                     <div className="dashboard-game-info">
                       <strong>{game.difficulty || "Puzzle"} challenge</strong>
-                      <span>{formatDate(game.endedAt || game.createdAt)}</span>
+                      <span>{formatDate(game.endedAt || game.createdAt || game.startedAt)}</span>
+                      {String(game.status).toUpperCase() === "ACTIVE" && (
+                        <Link
+                          className="dashboard-game-resume"
+                          to="/gameplay"
+                          state={{ gameId: String(game._id) }}
+                        >
+                          Resume game <span aria-hidden="true">→</span>
+                        </Link>
+                      )}
                     </div>
                     <span
                       className={`dashboard-game-status dashboard-game-status--${(game.status || "active").toLowerCase()}`}

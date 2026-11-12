@@ -7,7 +7,7 @@
   min-height: 100vh;
   margin-left: calc(-50vw + 50%);
   padding: 0 28px;
-  background: #fbfaf6;
+  background: var(--dashboard-page-background, #fbfaf6);
   color: var(--dash-ink);
   font-family: "Segoe UI", system-ui, sans-serif;
   text-align: left;
@@ -272,6 +272,24 @@
   font-size: 10px;
 }
 
+.dashboard-game-row--active {
+  min-height: 82px;
+}
+
+.dashboard-game-resume {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #8d6a11;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.dashboard-game-resume:hover {
+  color: #59420b;
+}
+
 .dashboard-game-status {
   padding: 5px 8px;
   border-radius: 20px;
@@ -295,6 +313,11 @@
 .dashboard-game-status--active {
   background: #fff4d9;
   color: #a07816;
+}
+
+.dashboard-game-resume:focus-visible {
+  outline: 3px solid #d29d14;
+  outline-offset: 3px;
 }
 
 .dashboard-game-score {
