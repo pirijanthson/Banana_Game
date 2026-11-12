@@ -4,6 +4,7 @@ import "./Navbar.css";
 const navigationItems = [
   { label: "Dashboard", to: "/dashboard" },
   { label: "Game history", to: "/game-history" },
+  { label: "Score summary", to: "/score-summary" },
   { label: "Leaderboard", to: "/leaderboard" },
   { label: "Profile", to: "/profile" },
 ];
