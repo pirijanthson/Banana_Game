@@ -12,6 +12,7 @@ import ScoreSummary from "./pages/ScoreSummary/ScoreSummary";
 import ScoreStatistics from "./pages/ScoreStatistics/ScoreStatistics";
 import Leaderboard from "./pages/Leaderboard/Leaderboard";
 import Profile from "./pages/Profile/Profile";
+import ChangePassword from "./pages/ChangePassword/ChangePassword";
 
 function App() {
   return (
@@ -35,7 +36,7 @@ function App() {
       <Route path="/leaderboard" element={<Leaderboard />} />
       <Route path="/my-rank" element={<Navigate to="/leaderboard" replace />} />
       <Route path="/profile" element={<Profile />} />
-      <Route path="/change-password" element={<div>Change Password Page</div>} />
+      <Route path="/change-password" element={<ChangePassword />} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

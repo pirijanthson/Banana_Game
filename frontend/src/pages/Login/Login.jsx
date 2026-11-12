@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import BananaBackground from "../../components/BananaBackground/BananaBackground";
 import "./Login.css";
 
@@ -60,6 +60,7 @@ async function postAuth(path, data) {
 }
 
 function Login() {
+  const location = useLocation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     login: "",
@@ -68,7 +69,7 @@ function Login() {
   });
   const [challenge, setChallenge] = useState(null);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(location.state?.notice || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
