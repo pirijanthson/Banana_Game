@@ -1,4 +1,51 @@
 const mongoose = require("mongoose");
+const { DEFAULT_SETTINGS } = require("../utils/settings");
+
+const settingsSchema = new mongoose.Schema(
+    {
+        backgroundColor: {
+            type: String,
+            default: DEFAULT_SETTINGS.backgroundColor,
+            match: /^#[\da-f]{6}$/i
+        },
+        showAnswerFeedback: {
+            type: Boolean,
+            default: DEFAULT_SETTINGS.showAnswerFeedback
+        },
+        theme: {
+            type: String,
+            enum: ["light", "dark"],
+            default: DEFAULT_SETTINGS.theme
+        },
+        textSize: {
+            type: String,
+            enum: ["normal", "large"],
+            default: DEFAULT_SETTINGS.textSize
+        },
+        reduceMotion: {
+            type: Boolean,
+            default: DEFAULT_SETTINGS.reduceMotion
+        },
+        soundEffects: {
+            type: Boolean,
+            default: DEFAULT_SETTINGS.soundEffects
+        },
+        timerWarnings: {
+            type: Boolean,
+            default: DEFAULT_SETTINGS.timerWarnings
+        },
+        timerWarningSeconds: {
+            type: Number,
+            enum: [5, 10, 15],
+            default: DEFAULT_SETTINGS.timerWarningSeconds
+        },
+        showProgress: {
+            type: Boolean,
+            default: DEFAULT_SETTINGS.showProgress
+        }
+    },
+    { _id: false }
+);
 
 const userSchema = new mongoose.Schema(
     {
@@ -84,6 +131,11 @@ const userSchema = new mongoose.Schema(
             type: String,
             enum: ["local", "google"],
             default: "local"
+        },
+
+        settings: {
+            type: settingsSchema,
+            default: undefined
         }
     },
 

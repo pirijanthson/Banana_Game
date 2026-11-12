@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/Dashboard/DashboardLayout/DashboardLayout";
-import { getAppSettings } from "../../utils/settings";
+import { useAppSettings } from "../../context/useAppSettings";
 import { playGameSound } from "../../utils/gameSounds";
 import "./Gameplay.css";
 
@@ -107,13 +107,14 @@ function Gameplay() {
   const submitRef = useRef(null);
 
   const user = readStoredUser();
+  const { settings } = useAppSettings();
   const {
     showAnswerFeedback,
     soundEffects,
     timerWarnings,
     timerWarningSeconds,
     showProgress,
-  } = getAppSettings();
+  } = settings;
   const username =
     typeof user.username === "string" ? user.username.trim() : "";
   const displayName =
