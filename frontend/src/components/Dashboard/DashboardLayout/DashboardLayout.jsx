@@ -7,8 +7,19 @@ import "../DashboardTheme.css";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
+function readStoredUser() {
+  try {
+    const user = JSON.parse(window.localStorage.getItem("user") || "{}");
+    return user && typeof user === "object" && !Array.isArray(user) ? user : {};
+  } catch {
+    return {};
+  }
+}
+
 function DashboardLayout({ children, displayName, onLogout, username }) {
   const { settings } = useAppSettings();
+  const user = readStoredUser();
+  const avatar = user.avatar || user.profilePicture;
   return (
     <main
       className="dashboard-page"
@@ -18,7 +29,7 @@ function DashboardLayout({ children, displayName, onLogout, username }) {
       style={{ "--dashboard-page-background": getDashboardBackground(settings) }}
     >
       <div className="dashboard-shell">
-        <Navbar displayName={displayName} onLogout={onLogout} />
+        <Navbar displayName={displayName} avatar={avatar} onLogout={onLogout} />
         <div className="dashboard-layout-main">{children}</div>
         <footer className="dashboard-footer">
           <div className="dashboard-footer__main">

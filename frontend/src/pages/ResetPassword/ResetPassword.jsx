@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import BananaBackground from "../../components/BananaBackground/BananaBackground";
 import "./ResetPassword.css";
+import "../AuthPages.css";
 
 const API_BASE_URL = import.meta.env.BACKEND_URL
   ?.replace(/\/+$/, "")
@@ -90,7 +91,7 @@ function ResetPassword() {
       <BananaBackground />
 
       <div className="reset-card">
-        <div className="reset-icon" aria-hidden="true">🔐</div>
+        <div className="reset-icon" aria-hidden="true"><i className="fas fa-lock" aria-hidden="true"></i></div>
         <h1>Reset Password</h1>
         <p className="reset-subtitle">
           Choose a new password with at least 8 characters.

@@ -21,7 +21,7 @@ function getInitials(name) {
   );
 }
 
-function Navbar({ displayName, onLogout }) {
+function Navbar({ displayName, avatar, onLogout }) {
   return (
     <header className="dashboard-header">
       <Link className="dashboard-brand" to="/dashboard" aria-label="Banana Quest home">
@@ -44,7 +44,16 @@ function Navbar({ displayName, onLogout }) {
 
       <div className="dashboard-account">
         <Link className="dashboard-avatar" to="/profile" aria-label="Your profile">
-          {getInitials(displayName)}
+          {avatar ? (
+            <img
+              className="dashboard-avatar__image"
+              src={avatar}
+              alt=""
+              aria-hidden="true"
+            />
+          ) : (
+            getInitials(displayName)
+          )}
         </Link>
         <button
           type="button"

@@ -4,10 +4,28 @@ const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
+const multer = require("multer");
 const {
   normalizeSettings,
   validateSettings
 } = require("../utils/settings");
+
+// Multer storage configuration for avatar uploads
+const avatarStorage = multer.memoryStorage();
+
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: {
+    fileSize: 2 * 1024 * 1024 // 2MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed."), false);
+    }
+  }
+});
 
 // Email transporter
 const transporter = nodemailer.createTransport({
@@ -28,6 +46,45 @@ const escapeHtml = (value) => {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+};
+
+const getUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select(
+      "fullName username email role points currentStreak profilePicture authProvider createdAt updatedAt"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User profile retrieved successfully.",
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        points: user.points || 0,
+        currentStreak: user.currentStreak || 0,
+        profilePicture: user.profilePicture || null,
+        authProvider: user.authProvider,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error("Get User Profile Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load your profile."
+    });
+  }
 };
 
 const getUserSettings = async (req, res) => {
@@ -98,7 +155,7 @@ const updateUserSettings = async (req, res) => {
 // Update User Profile
 const updateUserProfile = async (req, res) => {
   try {
-    const { fullName, username, profilePicture } = req.body;
+    const { fullName, username, profilePicture } = req.body || {};
 
     const user = await User.findById(req.user.userId);
 
@@ -111,7 +168,6 @@ const updateUserProfile = async (req, res) => {
 
     let profileChanged = false;
 
-    // Validate and update full name
     if (fullName !== undefined) {
       if (typeof fullName !== "string" || !fullName.trim()) {
         return res.status(400).json({
@@ -120,30 +176,24 @@ const updateUserProfile = async (req, res) => {
         });
       }
 
-      const newFullName = fullName.trim();
-
-      if (newFullName !== user.fullName) {
-        user.fullName = newFullName;
+      const nextFullName = fullName.trim();
+      if (nextFullName !== user.fullName) {
+        user.fullName = nextFullName;
         profileChanged = true;
       }
     }
 
-    // Validate and update username
     if (username !== undefined) {
-      if (
-        typeof username !== "string" ||
-        username.trim().length < 3
-      ) {
+      if (typeof username !== "string" || username.trim().length < 3) {
         return res.status(400).json({
           success: false,
           message: "Username must contain at least 3 characters."
         });
       }
 
-      const normalizedUsername = username.trim().toLowerCase();
-
+      const nextUsername = username.trim().toLowerCase();
       const existingUser = await User.findOne({
-        username: normalizedUsername,
+        username: nextUsername,
         _id: { $ne: user._id }
       });
 
@@ -154,33 +204,24 @@ const updateUserProfile = async (req, res) => {
         });
       }
 
-      if (normalizedUsername !== user.username) {
-        user.username = normalizedUsername;
+      if (nextUsername !== user.username) {
+        user.username = nextUsername;
         profileChanged = true;
       }
     }
 
-    // Validate and update profile picture
     if (profilePicture !== undefined) {
-      if (
-        typeof profilePicture !== "string" ||
-        profilePicture.trim().length === 0
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid profile picture."
-        });
-      }
+      const nextProfilePicture =
+        typeof profilePicture === "string" && profilePicture.trim().length > 0
+          ? profilePicture.trim()
+          : null;
 
-      const newProfilePicture = profilePicture.trim();
-
-      if (newProfilePicture !== user.profilePicture) {
-        user.profilePicture = newProfilePicture;
+      if (nextProfilePicture !== user.profilePicture) {
+        user.profilePicture = nextProfilePicture;
         profileChanged = true;
       }
     }
 
-    // Check whether any profile information changed
     if (!profileChanged) {
       return res.status(200).json({
         success: true,
@@ -190,15 +231,16 @@ const updateUserProfile = async (req, res) => {
           fullName: user.fullName,
           username: user.username,
           email: user.email,
-          profilePicture: user.profilePicture
+          profilePicture: user.profilePicture,
+          points: user.points || 0,
+          currentStreak: user.currentStreak || 0,
+          authProvider: user.authProvider
         }
       });
     }
 
-    // Save updated profile
     await user.save();
 
-    // Send profile update notification email
     try {
       const templatePath = path.join(
         __dirname,
@@ -206,7 +248,6 @@ const updateUserProfile = async (req, res) => {
       );
 
       let emailTemplate = fs.readFileSync(templatePath, "utf8");
-
       emailTemplate = emailTemplate.replace(
         /{{fullName}}/g,
         escapeHtml(user.fullName)
@@ -218,14 +259,8 @@ const updateUserProfile = async (req, res) => {
         subject: "Banana Quest - Profile Updated Successfully",
         html: emailTemplate
       });
-
-      console.log("Profile update notification email sent successfully.");
-
     } catch (emailError) {
-      console.error(
-        "Profile update email error:",
-        emailError.message
-      );
+      console.error("Profile update email error:", emailError.message);
     }
 
     return res.status(200).json({
@@ -236,10 +271,12 @@ const updateUserProfile = async (req, res) => {
         fullName: user.fullName,
         username: user.username,
         email: user.email,
-        profilePicture: user.profilePicture
+        profilePicture: user.profilePicture,
+        points: user.points || 0,
+        currentStreak: user.currentStreak || 0,
+        authProvider: user.authProvider
       }
     });
-
   } catch (error) {
     console.error("Update Profile Error:", error);
 
@@ -372,9 +409,145 @@ const changePassword = async (req, res) => {
   }
 };
 
+const uploadAvatar = [
+  avatarUpload.single("avatar"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No image file provided."
+        });
+      }
+
+      const user = await User.findById(req.user.userId);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found."
+        });
+      }
+
+      // Convert image to base64 data URL
+      const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+
+      user.profilePicture = base64Image;
+      await user.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Profile picture updated.",
+        user: {
+          id: user._id,
+          fullName: user.fullName,
+          username: user.username,
+          email: user.email,
+          profilePicture: user.profilePicture
+        }
+      });
+
+    } catch (error) {
+      console.error("Upload Avatar Error:", error);
+
+      if (error instanceof multer.MulterError) {
+        if (error.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({
+            success: false,
+            message: "Image must be smaller than 2MB."
+          });
+        }
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to upload avatar."
+      });
+    }
+  }
+];
+
+const getCookieConsent = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      });
+    }
+
+    const consent = user.cookieConsent || {
+      essential: true,
+      analytics: false,
+      preferences: false
+    };
+
+    return res.status(200).json({
+      success: true,
+      cookieConsent: consent
+    });
+
+  } catch (error) {
+    console.error("Get Cookie Consent Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load cookie preferences."
+    });
+  }
+};
+
+const updateCookieConsent = async (req, res) => {
+  try {
+    const { analytics, preferences } = req.body;
+
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      });
+    }
+
+    const currentConsent = user.cookieConsent || {
+      essential: true,
+      analytics: false,
+      preferences: false
+    };
+
+    user.cookieConsent = {
+      essential: true, // Always true, cannot be disabled
+      analytics: Boolean(analytics),
+      preferences: Boolean(preferences),
+      updatedAt: new Date()
+    };
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Cookie preferences saved.",
+      cookieConsent: user.cookieConsent
+    });
+
+  } catch (error) {
+    console.error("Update Cookie Consent Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to save cookie preferences."
+    });
+  }
+};
+
 module.exports = {
+  getUserProfile,
   getUserSettings,
   updateUserSettings,
   updateUserProfile,
-  changePassword
+  changePassword,
+  uploadAvatar: uploadAvatar,
+  getCookieConsent,
+  updateCookieConsent
 };

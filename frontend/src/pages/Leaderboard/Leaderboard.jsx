@@ -151,13 +151,13 @@ function Leaderboard() {
       username={username}
     >
       <section className="leaderboard" aria-labelledby="leaderboard-title">
-        <header className="leaderboard__hero">
+<header className="leaderboard__hero">
           <div className="leaderboard__hero-copy">
             <p className="leaderboard__eyebrow">A LITTLE FRIENDLY COMPETITION</p>
             <h1 id="leaderboard-title">Leaderboard</h1>
-            <p>See who’s making the biggest moves in Banana Quest.</p>
+            <p>See who's making the biggest moves in Banana Quest.</p>
           </div>
-          <span className="leaderboard__hero-trophy" aria-hidden="true">🏆</span>
+          <span className="leaderboard__hero-trophy" aria-hidden="true"><i className="fas fa-trophy" aria-hidden="true"></i></span>
           <span className="leaderboard__hero-banana" aria-hidden="true">🍌</span>
         </header>
 
@@ -209,7 +209,7 @@ function Leaderboard() {
                         key={player.userId || playerName}
                       >
                         <span className="leaderboard-row__rank">
-                          {rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`}
+                          {rank === 1 ? <i className="fas fa-medal" aria-hidden="true"></i> : rank === 2 ? <i className="fas fa-medal" aria-hidden="true"></i> : rank === 3 ? <i className="fas fa-medal" aria-hidden="true"></i> : `#${rank}`}
                         </span>
                         <span className={`leaderboard-row__avatar${rank === 1 ? " leaderboard-row__avatar--gold" : ""}`} aria-hidden="true">
                           {getInitials(playerName)}
@@ -236,7 +236,7 @@ function Leaderboard() {
                 </ol>
               ) : (
                 <div className="leaderboard__empty">
-                  <span aria-hidden="true">🏁</span>
+                  <span aria-hidden="true"><i className="fas fa-flag-checkered" aria-hidden="true"></i></span>
                   <h3>The leaderboard is waiting for its first champion</h3>
                   <p>Complete a game to see the top players and claim your spot.</p>
                   <Link to="/game-selection">
@@ -248,7 +248,7 @@ function Leaderboard() {
 
             <aside className="leaderboard__rank-card" aria-label="Your leaderboard rank">
               <span className="leaderboard__rank-icon" aria-hidden="true">
-                {myRank ? "🎖️" : "🌱"}
+                {myRank ? <i className="fas fa-medal" aria-hidden="true"></i> : <i className="fas fa-seedling" aria-hidden="true"></i>}
               </span>
               <p className="leaderboard__eyebrow">YOUR STANDING</p>
               {isLoading ? (

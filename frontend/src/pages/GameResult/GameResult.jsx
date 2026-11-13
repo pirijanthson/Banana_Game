@@ -43,7 +43,8 @@ function GameResult() {
 
   const isComplete = result.status === "COMPLETED";
   const questionsAnswered = Number(result.questionsAnswered) || 0;
-  const correctAnswers = Number(result.correctAnswers) || 0;
+  const correctAnswers =
+    Number(result.correctAnswers ?? result.correct ?? 0) || 0;
   const accuracy = questionsAnswered
     ? Math.round((correctAnswers / questionsAnswered) * 100)
     : 0;
@@ -65,7 +66,7 @@ function GameResult() {
           className={`game-result__hero${isComplete ? " game-result__hero--complete" : " game-result__hero--failed"}`}
         >
           <div className="game-result__icon" aria-hidden="true">
-            {isComplete ? "🏆" : "🍌"}
+            {isComplete ? <i className="fas fa-trophy" aria-hidden="true"></i> : "🍌"}
           </div>
           <p className="game-result__eyebrow">
             {isComplete ? "CHALLENGE COMPLETE" : "CHALLENGE OVER"}
@@ -86,7 +87,7 @@ function GameResult() {
         </div>
 
         <section className="game-result__score-card" aria-label="Game score">
-          <span className="game-result__score-icon" aria-hidden="true">⭐</span>
+          <span className="game-result__score-icon" aria-hidden="true"><i className="fas fa-star" aria-hidden="true"></i></span>
           <div>
             <p>Final score</p>
             <strong>{Number(result.score) || 0}</strong>
@@ -96,12 +97,12 @@ function GameResult() {
 
         <section className="game-result__stats" aria-label="Game statistics">
           <article className="game-result__stat">
-            <span className="game-result__stat-icon" aria-hidden="true">✅</span>
+            <span className="game-result__stat-icon" aria-hidden="true"><i className="fas fa-check-circle" aria-hidden="true"></i></span>
             <span className="game-result__stat-label">Correct answers</span>
             <strong>{correctAnswers}</strong>
           </article>
           <article className="game-result__stat">
-            <span className="game-result__stat-icon" aria-hidden="true">🧩</span>
+            <span className="game-result__stat-icon" aria-hidden="true"><i className="fas fa-puzzle-piece" aria-hidden="true"></i></span>
             <span className="game-result__stat-label">Questions answered</span>
             <strong>
               {questionsAnswered}
@@ -109,12 +110,12 @@ function GameResult() {
             </strong>
           </article>
           <article className="game-result__stat">
-            <span className="game-result__stat-icon" aria-hidden="true">🎯</span>
+            <span className="game-result__stat-icon" aria-hidden="true"><i className="fas fa-bullseye" aria-hidden="true"></i></span>
             <span className="game-result__stat-label">Answer accuracy</span>
             <strong>{accuracy}%</strong>
           </article>
           <article className="game-result__stat">
-            <span className="game-result__stat-icon" aria-hidden="true">❤️</span>
+            <span className="game-result__stat-icon" aria-hidden="true"><i className="fas fa-heart" aria-hidden="true"></i></span>
             <span className="game-result__stat-label">Lives remaining</span>
             <strong>{Number(result.lives) || 0}</strong>
           </article>

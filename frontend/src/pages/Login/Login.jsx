@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import BananaBackground from "../../components/BananaBackground/BananaBackground";
 import "./Login.css";
+import "../AuthPages.css";
 
 const API_BASE_URL = (
   import.meta.env.BACKEND_URL

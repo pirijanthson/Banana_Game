@@ -123,10 +123,10 @@ function ScoreSummary() {
   ];
 
   const metrics = [
-    { icon: "⭐", label: "Total points", value: scores?.totalPoints },
-    { icon: "📊", label: "Average score", value: scores?.averageScore },
-    { icon: "🏆", label: "Personal best", value: scores?.highestScore },
-    { icon: "🎮", label: "Games played", value: scores?.totalGames },
+    { icon: <i className="fas fa-star" aria-hidden="true"></i>, label: "Total points", value: scores?.totalPoints },
+    { icon: <i className="fas fa-chart-bar" aria-hidden="true"></i>, label: "Average score", value: scores?.averageScore },
+    { icon: <i className="fas fa-trophy" aria-hidden="true"></i>, label: "Personal best", value: scores?.highestScore },
+    { icon: <i className="fas fa-gamepad" aria-hidden="true"></i>, label: "Games played", value: scores?.totalGames },
   ];
 
   return (
@@ -136,13 +136,13 @@ function ScoreSummary() {
       username={username}
     >
       <section className="score-summary" aria-labelledby="score-summary-title">
-        <header className="score-summary__hero">
+<header className="score-summary__hero">
           <div className="score-summary__hero-copy">
             <p className="score-summary__eyebrow">YOUR PROGRESS, IN POINTS</p>
             <h1 id="score-summary-title">Score summary</h1>
-            <p>A little progress adds up. Here’s how your puzzle journey is going.</p>
+            <p>A little progress adds up. Here's how your puzzle journey is going.</p>
           </div>
-          <span className="score-summary__hero-icon" aria-hidden="true">✨</span>
+          <span className="score-summary__hero-icon" aria-hidden="true"><i className="fas fa-sparkles" aria-hidden="true"></i></span>
           <span className="score-summary__hero-banana" aria-hidden="true">🍌</span>
         </header>
 

@@ -129,10 +129,10 @@ function ScoreStatistics() {
     : 0;
 
   const metrics = [
-    { icon: "🧩", label: "Questions answered", value: statistics?.totalQuestionsAnswered },
-    { icon: "✅", label: "Correct answers", value: statistics?.totalCorrectAnswers },
-    { icon: "↗️", label: "Incorrect answers", value: statistics?.totalIncorrectAnswers },
-    { icon: "⭐", label: "Points earned", value: statistics?.totalPointsEarned },
+    { icon: <i className="fas fa-puzzle-piece" aria-hidden="true"></i>, label: "Questions answered", value: statistics?.totalQuestionsAnswered },
+    { icon: <i className="fas fa-check-circle" aria-hidden="true"></i>, label: "Correct answers", value: statistics?.totalCorrectAnswers },
+    { icon: <i className="fas fa-arrow-up-right" aria-hidden="true"></i>, label: "Incorrect answers", value: statistics?.totalIncorrectAnswers },
+    { icon: <i className="fas fa-star" aria-hidden="true"></i>, label: "Points earned", value: statistics?.totalPointsEarned },
   ];
 
   return (
@@ -151,7 +151,7 @@ function ScoreStatistics() {
             <h1 id="score-statistics-title">Score statistics</h1>
             <p>See how your puzzle-solving skills are adding up.</p>
           </div>
-          <span className="score-statistics__hero-icon" aria-hidden="true">🎯</span>
+          <span className="score-statistics__hero-icon" aria-hidden="true"><i className="fas fa-bullseye" aria-hidden="true"></i></span>
           <span className="score-statistics__hero-banana" aria-hidden="true">🍌</span>
         </header>
 

@@ -47,6 +47,28 @@ const settingsSchema = new mongoose.Schema(
     { _id: false }
 );
 
+const cookieConsentSchema = new mongoose.Schema(
+    {
+        essential: {
+            type: Boolean,
+            default: true
+        },
+        analytics: {
+            type: Boolean,
+            default: false
+        },
+        preferences: {
+            type: Boolean,
+            default: false
+        },
+        updatedAt: {
+            type: Date,
+            default: Date.now
+        }
+    },
+    { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
     {
         fullName: {
@@ -135,6 +157,11 @@ const userSchema = new mongoose.Schema(
 
         settings: {
             type: settingsSchema,
+            default: undefined
+        },
+
+        cookieConsent: {
+            type: cookieConsentSchema,
             default: undefined
         }
     },

@@ -163,8 +163,8 @@ function Dashboard() {
             </Link>
           </div>
           <div className="dashboard-welcome__art" aria-hidden="true">
-            <span className="dashboard-sparkle dashboard-sparkle--one">✦</span>
-            <span className="dashboard-sparkle dashboard-sparkle--two">✦</span>
+            <span className="dashboard-sparkle dashboard-sparkle--one"><i className="fas fa-star" aria-hidden="true"></i></span>
+            <span className="dashboard-sparkle dashboard-sparkle--two"><i className="fas fa-star" aria-hidden="true"></i></span>
             <span className="dashboard-banana">🍌</span>
             <span className="dashboard-welcome__orbit" />
           </div>
@@ -174,25 +174,25 @@ function Dashboard() {
         <section className="dashboard-stats" aria-label="Your game statistics">
           <StatCard
             variant="points"
-            icon="⭐"
+            icon={<i className="fas fa-star" aria-hidden="true"></i>}
             label="Total points"
             value={isLoading || error ? "—" : formatNumber(scores?.totalPoints)}
           />
           <StatCard
             variant="games"
-            icon="🎮"
+            icon={<i className="fas fa-gamepad" aria-hidden="true"></i>}
             label="Games played"
             value={isLoading || error ? "—" : formatNumber(scores?.totalGames)}
           />
           <StatCard
             variant="accuracy"
-            icon="🎯"
+            icon={<i className="fas fa-bullseye" aria-hidden="true"></i>}
             label="Answer accuracy"
             value={isLoading || error ? "—" : `${formatNumber(statistics?.accuracyPercentage)}%`}
           />
           <StatCard
             variant="best"
-            icon="🏆"
+            icon={<i className="fas fa-trophy" aria-hidden="true"></i>}
             label="Personal best"
             value={isLoading || error ? "—" : formatNumber(scores?.highestScore)}
           />
@@ -241,7 +241,7 @@ function Dashboard() {
                     className={`dashboard-game-row${String(game.status).toUpperCase() === "ACTIVE" ? " dashboard-game-row--active" : ""}`}
                     key={game._id || game.id}
                   >
-                    <span className="dashboard-game-icon" aria-hidden="true">🍌</span>
+                    <span className="dashboard-game-icon" aria-hidden="true"><i className="fas fa-seedling" aria-hidden="true"></i></span>
                     <div className="dashboard-game-info">
                       <strong>{game.difficulty || "Puzzle"} challenge</strong>
                       <span>{formatDate(game.endedAt || game.createdAt || game.startedAt)}</span>
@@ -268,7 +268,7 @@ function Dashboard() {
               </div>
             ) : (
               <div className="dashboard-empty-state">
-                <span aria-hidden="true">🧩</span>
+                <span aria-hidden="true"><i className="fas fa-puzzle-piece" aria-hidden="true"></i></span>
                 <strong>Your first puzzle is waiting!</strong>
                 <p>Play a game and your recent activity will show up here.</p>
                 <Link to="/game-selection">Find a game <span aria-hidden="true">→</span></Link>

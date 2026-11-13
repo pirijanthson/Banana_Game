@@ -357,7 +357,7 @@ function Gameplay() {
               aria-label={`${remainingSeconds} seconds remaining`}
               aria-live="off"
             >
-              <span aria-hidden="true">⏱</span>
+              <span aria-hidden="true"><i className="fas fa-clock" aria-hidden="true"></i></span>
               <strong>{remainingSeconds}</strong>
               <span>sec</span>
             </div>
@@ -377,9 +377,11 @@ function Gameplay() {
           )}
 
           <div className="gameplay__details">
-            <span>⭐ <strong>{Number(game?.score) || 0}</strong> points</span>
+            <span><i className="fas fa-star" aria-hidden="true"></i> <strong>{Number(game?.score) || 0}</strong> points</span>
             <span aria-label={`${game?.lives || 0} lives remaining`}>
-              {"❤️".repeat(Math.max(0, Number(game?.lives) || 0))}
+              {[...Array(Math.max(0, Number(game?.lives) || 0))].map((_, i) => (
+                <i key={i} className="fas fa-heart" aria-hidden="true"></i>
+              ))}
               <strong>{game?.lives || 0} lives</strong>
             </span>
           </div>
@@ -394,7 +396,7 @@ function Gameplay() {
               />
             ) : (
               <div className="gameplay__image-fallback" role="status">
-                <span aria-hidden="true">🧩</span>
+                <span aria-hidden="true"><i className="fas fa-puzzle-piece" aria-hidden="true"></i></span>
                 <strong>We couldn&apos;t load this puzzle.</strong>
                 <span>Please submit an answer to continue to the next one.</span>
               </div>

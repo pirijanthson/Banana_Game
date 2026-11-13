@@ -1,5 +1,6 @@
 
 const GameSession = require("../models/GameSession");
+const User = require("../models/User");
 const mongoose = require("mongoose");
 const { fetchBananaPuzzle } = require("../services/bananaApiService");
 
@@ -24,6 +25,29 @@ const difficultySettings = {
   },
 };
 
+async function updateUserStats(userId, gameSession, isCompleted) {
+  try {
+    const user = await User.findById(userId);
+    if (!user) return;
+
+    const pointsEarned = gameSession.score;
+    const newTotalPoints = (user.points || 0) + pointsEarned;
+
+    let newStreak = user.currentStreak || 0;
+    if (isCompleted) {
+      newStreak += 1;
+    } else {
+      newStreak = 0;
+    }
+
+    user.points = newTotalPoints;
+    user.currentStreak = newStreak;
+    await user.save();
+  } catch (error) {
+    console.error("Update User Stats Error:", error.message);
+  }
+}
+
 function formatGameForClient(gameSession) {
   return {
     id: gameSession._id.toString(),
@@ -32,10 +56,13 @@ function formatGameForClient(gameSession) {
     lives: gameSession.lives,
     totalQuestions: gameSession.totalQuestions,
     questionsAnswered: gameSession.questionsAnswered,
+    correctAnswers: gameSession.correctAnswers,
     questionTimeLimitSeconds: gameSession.questionTimeLimitSeconds,
     questionStartedAt: gameSession.questionStartedAt,
     status: gameSession.status,
     question: gameSession.currentQuestionImage,
+    startedAt: gameSession.startedAt,
+    endedAt: gameSession.endedAt,
   };
 }
 
@@ -233,6 +260,7 @@ const submitAnswer = async (req, res) => {
       gameSession.currentQuestionImage = null;
 
       await gameSession.save();
+      await updateUserStats(req.user.userId, gameSession, false);
 
       return res.status(200).json({
         success: true,
@@ -249,6 +277,7 @@ const submitAnswer = async (req, res) => {
       gameSession.currentQuestionImage = null;
 
       await gameSession.save();
+      await updateUserStats(req.user.userId, gameSession, true);
 
       return res.status(200).json({
         success: true,

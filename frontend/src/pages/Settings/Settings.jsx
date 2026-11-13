@@ -96,7 +96,7 @@ function Settings() {
             <h1 id="settings-title">Settings</h1>
             <p>Personalize your Banana Quest experience.</p>
           </div>
-          <span className="settings-page__hero-icon" aria-hidden="true">⚙️</span>
+          <span className="settings-page__hero-icon" aria-hidden="true"><i className="fas fa-cog" aria-hidden="true"></i></span>
           <span className="settings-page__hero-banana" aria-hidden="true">🍌</span>
         </header>
 
@@ -116,7 +116,7 @@ function Settings() {
         >
           <section className="settings-card" aria-labelledby="settings-appearance-title">
             <div className="settings-card__heading">
-              <span className="settings-card__icon settings-card__icon--appearance" aria-hidden="true">🎨</span>
+              <span className="settings-card__icon settings-card__icon--appearance" aria-hidden="true"><i className="fas fa-palette" aria-hidden="true"></i></span>
               <div>
                 <p className="settings-page__eyebrow">A LITTLE COLOR</p>
                 <h2 id="settings-appearance-title">Appearance</h2>
@@ -186,7 +186,7 @@ function Settings() {
 
           <section className="settings-card" aria-labelledby="settings-gameplay-title">
             <div className="settings-card__heading">
-              <span className="settings-card__icon" aria-hidden="true">🎮</span>
+              <span className="settings-card__icon" aria-hidden="true"><i className="fas fa-gamepad" aria-hidden="true"></i></span>
               <div>
                 <p className="settings-page__eyebrow">YOUR NEXT CHALLENGE</p>
                 <h2 id="settings-gameplay-title">Gameplay</h2>
@@ -252,7 +252,7 @@ function Settings() {
 
           <section className="settings-card" aria-labelledby="settings-notifications-title">
             <div className="settings-card__heading">
-              <span className="settings-card__icon settings-card__icon--notifications" aria-hidden="true">🔔</span>
+              <span className="settings-card__icon settings-card__icon--notifications" aria-hidden="true"><i className="fas fa-bell" aria-hidden="true"></i></span>
               <div>
                 <p className="settings-page__eyebrow">STAY IN THE LOOP</p>
                 <h2 id="settings-notifications-title">Notifications</h2>
