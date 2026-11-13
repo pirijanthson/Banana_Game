@@ -7,6 +7,7 @@ const API_BASE_URL = (import.meta.env.BACKEND_URL || "")
   .replace(/\/+$/, "")
   .replace(/\/api$/i, "");
 const STATISTICS_API_URL = `${API_BASE_URL}/api/games/scores/statistics`;
+const HISTORY_API_URL = `${API_BASE_URL}/api/games/history`;
 
 function readStoredUser() {
   try {
@@ -53,9 +54,34 @@ async function fetchScoreStatistics(token) {
   return result.statistics;
 }
 
+async function fetchGameHistory(token) {
+  const response = await fetch(HISTORY_API_URL, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error(
+      `The server returned an unexpected response (HTTP ${response.status}).`,
+    );
+  }
+
+  if (!response.ok || result?.success !== true || !Array.isArray(result.games)) {
+    const error = new Error(
+      result?.message || "Unable to load games for your difficulty breakdown.",
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  return result.games;
+}
+
 function ScoreStatistics() {
   const navigate = useNavigate();
   const [statistics, setStatistics] = useState(null);
+  const [gameHistory, setGameHistory] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -79,9 +105,13 @@ function ScoreStatistics() {
 
     const loadStatistics = async () => {
       try {
-        const result = await fetchScoreStatistics(token);
+        const [result, history] = await Promise.all([
+          fetchScoreStatistics(token),
+          fetchGameHistory(token),
+        ]);
         if (isCurrent) {
           setStatistics(result);
+          setGameHistory(history);
           setError("");
         }
       } catch (requestError) {
@@ -129,11 +159,39 @@ function ScoreStatistics() {
     : 0;
 
   const metrics = [
-    { icon: "🧩", label: "Questions answered", value: statistics?.totalQuestionsAnswered },
-    { icon: "✅", label: "Correct answers", value: statistics?.totalCorrectAnswers },
-    { icon: "↗️", label: "Incorrect answers", value: statistics?.totalIncorrectAnswers },
-    { icon: "⭐", label: "Points earned", value: statistics?.totalPointsEarned },
+    { icon: <i className="fas fa-puzzle-piece" aria-hidden="true"></i>, label: "Questions answered", value: statistics?.totalQuestionsAnswered },
+    { icon: <i className="fas fa-check-circle" aria-hidden="true"></i>, label: "Correct answers", value: statistics?.totalCorrectAnswers },
+    { icon: <i className="fas fa-arrow-up-right" aria-hidden="true"></i>, label: "Incorrect answers", value: statistics?.totalIncorrectAnswers },
+    { icon: <i className="fas fa-star" aria-hidden="true"></i>, label: "Points earned", value: statistics?.totalPointsEarned },
   ];
+  const difficultyBreakdown = ["EASY", "MEDIUM", "HARD"].map((difficulty) => {
+    const games = gameHistory.filter(
+      (game) => String(game.difficulty).toUpperCase() === difficulty,
+    );
+    const answered = games.reduce(
+      (total, game) => total + (Number(game.questionsAnswered) || 0),
+      0,
+    );
+    const correct = games.reduce(
+      (total, game) => total + (Number(game.correctAnswers) || 0),
+      0,
+    );
+    const points = games.reduce(
+      (total, game) => total + (Number(game.score) || 0),
+      0,
+    );
+
+    return {
+      difficulty,
+      games: games.length,
+      completed: games.filter(
+        (game) => String(game.status).toUpperCase() === "COMPLETED",
+      ).length,
+      answered,
+      accuracy: answered ? (correct / answered) * 100 : 0,
+      averageScore: games.length ? points / games.length : 0,
+    };
+  });
 
   return (
     <DashboardLayout
@@ -151,7 +209,7 @@ function ScoreStatistics() {
             <h1 id="score-statistics-title">Score statistics</h1>
             <p>See how your puzzle-solving skills are adding up.</p>
           </div>
-          <span className="score-statistics__hero-icon" aria-hidden="true">🎯</span>
+          <span className="score-statistics__hero-icon" aria-hidden="true"><i className="fas fa-bullseye" aria-hidden="true"></i></span>
           <span className="score-statistics__hero-banana" aria-hidden="true">🍌</span>
         </header>
 
@@ -322,6 +380,60 @@ function ScoreStatistics() {
                 )}
               </section>
             </div>
+
+            <section className="score-statistics__difficulty-panel" aria-labelledby="score-difficulty-title">
+              <div className="score-statistics__panel-heading">
+                <div>
+                  <p className="score-statistics__eyebrow">FIND YOUR RHYTHM</p>
+                  <h2 id="score-difficulty-title">Performance by difficulty</h2>
+                </div>
+                <span className="score-statistics__panel-caption">All games</span>
+              </div>
+
+              {isLoading ? (
+                <div className="score-statistics__difficulty-loading" role="status">
+                  Loading difficulty performance…
+                </div>
+              ) : gameHistory.length > 0 ? (
+                <div className="score-statistics__difficulty-grid">
+                  {difficultyBreakdown.map((item) => (
+                    <article
+                      className={`score-statistics__difficulty-card score-statistics__difficulty-card--${item.difficulty.toLowerCase()}`}
+                      key={item.difficulty}
+                    >
+                      <div className="score-statistics__difficulty-heading">
+                        <strong>{item.difficulty}</strong>
+                        <span>{formatNumber(item.games)} {item.games === 1 ? "game" : "games"}</span>
+                      </div>
+                      <div className="score-statistics__difficulty-accuracy">
+                        <span>Answer accuracy</span>
+                        <strong>{formatNumber(item.accuracy)}%</strong>
+                      </div>
+                      <div
+                        className="score-statistics__difficulty-track"
+                        role="progressbar"
+                        aria-label={`${item.difficulty.toLowerCase()} answer accuracy`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Math.min(100, item.accuracy)}
+                      >
+                        <span style={{ width: `${Math.min(100, item.accuracy)}%` }} />
+                      </div>
+                      <div className="score-statistics__difficulty-meta">
+                        <span>Avg. score <strong>{formatNumber(item.averageScore)}</strong></span>
+                        <span>Completed <strong>{formatNumber(item.completed)}</strong></span>
+                        <span>Answered <strong>{formatNumber(item.answered)}</strong></span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="score-statistics__difficulty-empty">
+                  Play a puzzle to see how you perform at each difficulty.
+                  <Link to="/game-selection">Choose a challenge <span aria-hidden="true">→</span></Link>
+                </div>
+              )}
+            </section>
 
             <div className="score-statistics__footer">
               <span>Want to see your overall performance?</span>

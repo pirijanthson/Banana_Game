@@ -5,12 +5,16 @@ const DEFAULT_SETTINGS = Object.freeze({
   textSize: "normal",
   reduceMotion: false,
   soundEffects: false,
+  soundVolume: 70,
+  backgroundMusic: false,
+  musicVolume: 25,
   timerWarnings: true,
   timerWarningSeconds: 10,
   showProgress: true,
 });
 
 const TIMER_WARNING_THRESHOLDS = [5, 10, 15];
+const TEXT_SIZE_OPTIONS = ["small", "normal", "medium", "large", "extra-large"];
 const HEX_COLOR_PATTERN = /^#[\da-f]{6}$/i;
 const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS);
 
@@ -32,11 +36,17 @@ function validateSettings(settings) {
         (typeof value !== "string" || !HEX_COLOR_PATTERN.test(value))) ||
       (key === "showAnswerFeedback" && typeof value !== "boolean") ||
       (key === "theme" && !["light", "dark"].includes(value)) ||
-      (key === "textSize" && !["normal", "large"].includes(value)) ||
-      (["reduceMotion", "soundEffects", "timerWarnings", "showProgress"].includes(
-        key,
-      ) &&
+      (key === "textSize" && !TEXT_SIZE_OPTIONS.includes(value)) ||
+      ([
+        "reduceMotion",
+        "soundEffects",
+        "backgroundMusic",
+        "timerWarnings",
+        "showProgress",
+      ].includes(key) &&
         typeof value !== "boolean") ||
+      (["soundVolume", "musicVolume"].includes(key) &&
+        (!Number.isInteger(value) || value < 0 || value > 100)) ||
       (key === "timerWarningSeconds" &&
         !TIMER_WARNING_THRESHOLDS.includes(value))
     ) {
@@ -60,7 +70,9 @@ function normalizeSettings(settings) {
         ? source.showAnswerFeedback
         : DEFAULT_SETTINGS.showAnswerFeedback,
     theme: source.theme === "dark" ? "dark" : DEFAULT_SETTINGS.theme,
-    textSize: source.textSize === "large" ? "large" : DEFAULT_SETTINGS.textSize,
+    textSize: TEXT_SIZE_OPTIONS.includes(source.textSize)
+      ? source.textSize
+      : DEFAULT_SETTINGS.textSize,
     reduceMotion:
       typeof source.reduceMotion === "boolean"
         ? source.reduceMotion
@@ -69,6 +81,22 @@ function normalizeSettings(settings) {
       typeof source.soundEffects === "boolean"
         ? source.soundEffects
         : DEFAULT_SETTINGS.soundEffects,
+    soundVolume:
+      Number.isInteger(source.soundVolume) &&
+      source.soundVolume >= 0 &&
+      source.soundVolume <= 100
+        ? source.soundVolume
+        : DEFAULT_SETTINGS.soundVolume,
+    backgroundMusic:
+      typeof source.backgroundMusic === "boolean"
+        ? source.backgroundMusic
+        : DEFAULT_SETTINGS.backgroundMusic,
+    musicVolume:
+      Number.isInteger(source.musicVolume) &&
+      source.musicVolume >= 0 &&
+      source.musicVolume <= 100
+        ? source.musicVolume
+        : DEFAULT_SETTINGS.musicVolume,
     timerWarnings:
       typeof source.timerWarnings === "boolean"
         ? source.timerWarnings

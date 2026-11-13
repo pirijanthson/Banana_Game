@@ -193,21 +193,21 @@ function GameHistory() {
 
         <section className="game-history__stats" aria-label="Game history summary">
           <article className="game-history-stat">
-            <span className="game-history-stat__icon" aria-hidden="true">🎮</span>
+            <span className="game-history-stat__icon" aria-hidden="true"><i className="fas fa-gamepad" aria-hidden="true"></i></span>
             <div>
               <span>Games played</span>
               <strong>{isLoading || error ? "—" : formatNumber(games.length)}</strong>
             </div>
           </article>
           <article className="game-history-stat">
-            <span className="game-history-stat__icon game-history-stat__icon--points" aria-hidden="true">⭐</span>
+            <span className="game-history-stat__icon game-history-stat__icon--points" aria-hidden="true"><i className="fas fa-star" aria-hidden="true"></i></span>
             <div>
               <span>Total points</span>
               <strong>{isLoading || error ? "—" : formatNumber(totalPoints)}</strong>
             </div>
           </article>
           <article className="game-history-stat">
-            <span className="game-history-stat__icon game-history-stat__icon--best" aria-hidden="true">🏆</span>
+            <span className="game-history-stat__icon game-history-stat__icon--best" aria-hidden="true"><i className="fas fa-trophy" aria-hidden="true"></i></span>
             <div>
               <span>Personal best</span>
               <strong>{isLoading || error ? "—" : formatNumber(highestScore)}</strong>
@@ -279,14 +279,14 @@ function GameHistory() {
             </div>
           ) : games.length === 0 ? (
             <div className="game-history__empty">
-              <span aria-hidden="true">🧩</span>
+              <span aria-hidden="true"><i className="fas fa-puzzle-piece" aria-hidden="true"></i></span>
               <h3>Your story starts with a puzzle</h3>
               <p>Play your first game and your results will appear here.</p>
               <Link to="/game-selection">Choose a challenge <span aria-hidden="true">→</span></Link>
             </div>
           ) : filteredGames.length === 0 ? (
             <div className="game-history__empty game-history__empty--compact">
-              <span aria-hidden="true">🔎</span>
+              <span aria-hidden="true"><i className="fas fa-search" aria-hidden="true"></i></span>
               <h3>No games match these filters</h3>
               <p>Try a different status or difficulty.</p>
               <button

@@ -1,4 +1,11 @@
 const SETTINGS_KEY = "bananaQuestSettings";
+export const TEXT_SIZE_OPTIONS = [
+  { value: "small", label: "Small" },
+  { value: "normal", label: "Normal" },
+  { value: "medium", label: "Medium" },
+  { value: "large", label: "Large" },
+  { value: "extra-large", label: "Extra large" },
+];
 const DEFAULT_SETTINGS = {
   backgroundColor: "#fbfaf6",
   showAnswerFeedback: true,
@@ -6,6 +13,9 @@ const DEFAULT_SETTINGS = {
   textSize: "normal",
   reduceMotion: false,
   soundEffects: false,
+  soundVolume: 70,
+  backgroundMusic: false,
+  musicVolume: 25,
   timerWarnings: true,
   timerWarningSeconds: 10,
   showProgress: true,
@@ -19,6 +29,16 @@ const API_BASE_URL = (import.meta.env.BACKEND_URL || "")
   .replace(/\/api$/i, "");
 const SETTINGS_API_URL = `${API_BASE_URL}/api/users/settings`;
 
+function normalizeVolume(value, fallback) {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+  const volume = Number(value);
+  return Number.isInteger(volume) && volume >= 0 && volume <= 100
+    ? volume
+    : fallback;
+}
+
 function normalizeSettings(settings) {
   const source = settings || {};
   return {
@@ -30,7 +50,9 @@ function normalizeSettings(settings) {
         ? source.showAnswerFeedback
         : DEFAULT_SETTINGS.showAnswerFeedback,
     theme: source.theme === "dark" ? "dark" : DEFAULT_SETTINGS.theme,
-    textSize: source.textSize === "large" ? "large" : DEFAULT_SETTINGS.textSize,
+    textSize: TEXT_SIZE_OPTIONS.some((option) => option.value === source.textSize)
+      ? source.textSize
+      : DEFAULT_SETTINGS.textSize,
     reduceMotion:
       typeof source.reduceMotion === "boolean"
         ? source.reduceMotion
@@ -39,6 +61,18 @@ function normalizeSettings(settings) {
       typeof source.soundEffects === "boolean"
         ? source.soundEffects
         : DEFAULT_SETTINGS.soundEffects,
+    soundVolume: normalizeVolume(
+      source.soundVolume,
+      DEFAULT_SETTINGS.soundVolume,
+    ),
+    backgroundMusic:
+      typeof source.backgroundMusic === "boolean"
+        ? source.backgroundMusic
+        : DEFAULT_SETTINGS.backgroundMusic,
+    musicVolume: normalizeVolume(
+      source.musicVolume,
+      DEFAULT_SETTINGS.musicVolume,
+    ),
     timerWarnings:
       typeof source.timerWarnings === "boolean"
         ? source.timerWarnings

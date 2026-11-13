@@ -12,9 +12,9 @@ const difficulties = [
   {
     id: "EASY",
     label: "Easy",
-    icon: "🌱",
+    icon: <i className="fas fa-seedling" aria-hidden="true"></i>,
     description: "A relaxed warm-up to get you going.",
-    questions: 5,
+    questions: 10,
     lives: 5,
     seconds: 60,
     points: 10,
@@ -23,7 +23,7 @@ const difficulties = [
   {
     id: "MEDIUM",
     label: "Medium",
-    icon: "⚡",
+    icon: <i className="fas fa-bolt" aria-hidden="true"></i>,
     description: "A balanced challenge for puzzle fans.",
     questions: 10,
     lives: 3,
@@ -34,9 +34,9 @@ const difficulties = [
   {
     id: "HARD",
     label: "Hard",
-    icon: "🔥",
+    icon: <i className="fas fa-fire" aria-hidden="true"></i>,
     description: "For sharp minds ready to go bananas.",
-    questions: 15,
+    questions: 10,
     lives: 2,
     seconds: 30,
     points: 30,
@@ -179,7 +179,7 @@ function GameSelection() {
                   <span><strong>{difficulty.seconds}s</strong> per question</span>
                 </span>
                 <span className="game-difficulty-card__points">
-                  ⭐ {difficulty.points} points per correct answer
+                  <i className="fas fa-star" aria-hidden="true"></i> {difficulty.points} points per correct answer
                 </span>
               </button>
             );

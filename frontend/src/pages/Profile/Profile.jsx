@@ -6,8 +6,11 @@ import "./Profile.css";
 const API_BASE_URL = (import.meta.env.BACKEND_URL || "")
   .replace(/\/+$/, "")
   .replace(/\/api$/i, "");
-const PROFILE_API_URL = `${API_BASE_URL}/api/auth/profile`;
+const PROFILE_API_URL = `${API_BASE_URL}/api/users/profile`;
 const UPDATE_PROFILE_API_URL = `${API_BASE_URL}/api/users/profile`;
+const UPLOAD_AVATAR_API_URL = `${API_BASE_URL}/api/users/avatar`;
+const COOKIE_CONSENT_API_URL = `${API_BASE_URL}/api/users/cookie-consent`;
+const GAMES_API_URL = `${API_BASE_URL}/api/games`;
 
 function readStoredUser() {
   try {
@@ -18,18 +21,50 @@ function readStoredUser() {
   }
 }
 
+function normalizeUserProfile(user = {}) {
+  const profilePicture =
+    typeof user.profilePicture === "string" && user.profilePicture.trim()
+      ? user.profilePicture.trim()
+      : typeof user.avatar === "string" && user.avatar.trim()
+        ? user.avatar.trim()
+        : "";
+
+  const totalPoints = Number(user.totalPoints ?? user.points ?? 0) || 0;
+  const currentStreak = Number(user.currentStreak ?? user.streak ?? 0) || 0;
+
+  return {
+    id: user.id || user._id || null,
+    fullName: typeof user.fullName === "string" ? user.fullName.trim() : "",
+    username: typeof user.username === "string" ? user.username.trim() : "",
+    email: typeof user.email === "string" ? user.email : "",
+    role: user.role || "user",
+    points: totalPoints,
+    totalPoints,
+    currentStreak,
+    streak: currentStreak,
+    profilePicture,
+    avatar: profilePicture,
+    authProvider: user.authProvider || "local",
+    createdAt: user.createdAt || null,
+    updatedAt: user.updatedAt || null,
+  };
+}
+
 async function readResponse(response) {
   let result;
   try {
     result = await response.json();
   } catch {
-    throw new Error(
-      `The server returned an unexpected response (HTTP ${response.status}).`,
+    throw Object.assign(
+      new Error(`The server returned an unexpected response (HTTP ${response.status}).`),
+      { status: response.status },
     );
   }
 
   if (!result || typeof result !== "object") {
-    throw new Error("The server returned an invalid profile response.");
+    throw Object.assign(new Error("The server returned an invalid profile response."), {
+      status: response.status,
+    });
   }
 
   if (!response.ok || result.success !== true) {
@@ -41,6 +76,30 @@ async function readResponse(response) {
   return result;
 }
 
+async function fetchGameOverview(token) {
+  const [summaryResponse, statisticsResponse] = await Promise.all([
+    fetch(`${GAMES_API_URL}/scores/summary`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+    fetch(`${GAMES_API_URL}/scores/statistics`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  ]);
+  const [summary, statistics] = await Promise.all([
+    readResponse(summaryResponse),
+    readResponse(statisticsResponse),
+  ]);
+
+  if (!summary.scores || !statistics.statistics) {
+    throw new Error("The server returned incomplete game statistics.");
+  }
+
+  return {
+    scores: summary.scores,
+    statistics: statistics.statistics,
+  };
+}
+
 function getDisplayName(user) {
   return (
     (typeof user.fullName === "string" && user.fullName.trim()) ||
@@ -50,15 +109,18 @@ function getDisplayName(user) {
 }
 
 function getInitials(name) {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase() || "BQ"
-  );
+  const safeName = typeof name === "string" ? name.trim() : "";
+  if (!safeName) {
+    return "BQ";
+  }
+
+  return safeName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "BQ";
 }
 
 function formatJoinDate(value) {
@@ -77,24 +139,45 @@ function formatJoinDate(value) {
   }).format(date);
 }
 
+function formatNumber(value) {
+  return new Intl.NumberFormat().format(Number(value) || 0);
+}
+
 function Profile() {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState(readStoredUser);
+  const [profile, setProfile] = useState(() => normalizeUserProfile(readStoredUser()));
   const [formData, setFormData] = useState(() => {
-    const storedUser = readStoredUser();
+    const storedUser = normalizeUserProfile(readStoredUser());
     return {
       fullName: storedUser.fullName || "",
       username: storedUser.username || "",
     };
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingGameOverview, setIsLoadingGameOverview] = useState(true);
+  const [gameOverview, setGameOverview] = useState(null);
+  const [gameOverviewError, setGameOverviewError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [avatarPreview, setAvatarPreview] = useState(
+    normalizeUserProfile(readStoredUser()).profilePicture,
+  );
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarUrlPreview, setAvatarUrlPreview] = useState(null);
+  const [isValidatingUrl, setIsValidatingUrl] = useState(false);
+  const [cookieConsent, setCookieConsentState] = useState({
+    essential: true,
+    analytics: false,
+    preferences: false,
+  });
   const displayName = getDisplayName(profile);
-  const username =
-    typeof profile.username === "string" ? profile.username.trim() : "";
+  const username = typeof profile.username === "string" ? profile.username.trim() : "";
+  const totalPoints =
+    gameOverview?.scores?.totalPoints ?? profile.totalPoints ?? profile.points ?? 0;
+  const currentStreak = profile.currentStreak ?? profile.streak ?? 0;
 
   useEffect(() => {
     let isCurrent = true;
@@ -113,19 +196,24 @@ function Profile() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const result = await readResponse(response);
+
         if (!result.user || typeof result.user !== "object" || Array.isArray(result.user)) {
           throw new Error("The server returned an invalid profile response.");
         }
 
-        if (isCurrent) {
-          setProfile(result.user);
-          setFormData({
-            fullName: result.user.fullName || "",
-            username: result.user.username || "",
-          });
-          window.localStorage.setItem("user", JSON.stringify(result.user));
-          setError("");
+        if (!isCurrent) {
+          return;
         }
+
+        const nextProfile = normalizeUserProfile(result.user);
+        setProfile(nextProfile);
+        setFormData({
+          fullName: nextProfile.fullName || "",
+          username: nextProfile.username || "",
+        });
+        setAvatarPreview(nextProfile.profilePicture || "");
+        window.localStorage.setItem("user", JSON.stringify(nextProfile));
+        setError("");
       } catch (requestError) {
         if (requestError.status === 401) {
           window.localStorage.removeItem("token");
@@ -144,17 +232,233 @@ function Profile() {
       }
     };
 
+    const loadCookieConsent = async () => {
+      try {
+        const response = await fetch(COOKIE_CONSENT_API_URL, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const result = await readResponse(response);
+        if (result.cookieConsent && isCurrent) {
+          setCookieConsentState({
+            essential: true,
+            analytics: Boolean(result.cookieConsent.analytics),
+            preferences: Boolean(result.cookieConsent.preferences),
+          });
+        }
+      } catch (requestError) {
+        if (requestError.status === 401) {
+          window.localStorage.removeItem("token");
+          window.localStorage.removeItem("user");
+          navigate("/login", { replace: true });
+          return;
+        }
+      }
+    };
+
+    const loadGameOverview = async () => {
+      setIsLoadingGameOverview(true);
+      try {
+        const overview = await fetchGameOverview(token);
+        if (isCurrent) {
+          setGameOverview(overview);
+          setGameOverviewError("");
+        }
+      } catch (requestError) {
+        if (requestError.status === 401) {
+          window.localStorage.removeItem("token");
+          window.localStorage.removeItem("user");
+          navigate("/login", { replace: true });
+          return;
+        }
+        if (isCurrent) {
+          setGameOverviewError(
+            requestError.message || "Unable to load your game statistics.",
+          );
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoadingGameOverview(false);
+        }
+      }
+    };
+
     loadProfile();
+    loadCookieConsent();
+    loadGameOverview();
+
     return () => {
       isCurrent = false;
     };
   }, [navigate, refreshKey]);
+
+  const persistCookieConsent = async (nextConsent) => {
+    const token = window.localStorage.getItem("token");
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    try {
+      const response = await fetch(COOKIE_CONSENT_API_URL, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          analytics: Boolean(nextConsent.analytics),
+          preferences: Boolean(nextConsent.preferences),
+        }),
+      });
+      const result = await readResponse(response);
+      if (result.cookieConsent) {
+        setCookieConsentState({
+          essential: true,
+          analytics: Boolean(result.cookieConsent.analytics),
+          preferences: Boolean(result.cookieConsent.preferences),
+        });
+      }
+    } catch (requestError) {
+      if (requestError.status === 401) {
+        window.localStorage.removeItem("token");
+        window.localStorage.removeItem("user");
+        navigate("/login", { replace: true });
+        return;
+      }
+      setError(requestError.message || "Unable to save cookie preferences.");
+    }
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((current) => ({ ...current, [name]: value }));
     setError("");
     setNotice("");
+  };
+
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file.");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Image must be smaller than 2MB.");
+      return;
+    }
+
+    const token = window.localStorage.getItem("token");
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    const formPayload = new FormData();
+    formPayload.append("avatar", file);
+    setIsUploadingAvatar(true);
+    setError("");
+
+    try {
+      const response = await fetch(UPLOAD_AVATAR_API_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formPayload,
+      });
+      const result = await readResponse(response);
+      const nextUser = normalizeUserProfile({ ...profile, ...result.user });
+      setProfile(nextUser);
+      setAvatarPreview(nextUser.profilePicture || "");
+      window.localStorage.setItem("user", JSON.stringify(nextUser));
+      setNotice(result.message || "Profile picture updated.");
+    } catch (requestError) {
+      if (requestError.status === 401) {
+        window.localStorage.removeItem("token");
+        window.localStorage.removeItem("user");
+        navigate("/login", { replace: true });
+        return;
+      }
+      setError(requestError.message || "Unable to upload avatar.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarUrlChange = (event) => {
+    const value = event.target.value;
+    setAvatarUrl(value);
+    setError("");
+    setNotice("");
+
+    if (!value.trim()) {
+      setAvatarUrlPreview(null);
+      return;
+    }
+
+    setIsValidatingUrl(true);
+    const img = new Image();
+    img.onload = () => {
+      setAvatarUrlPreview(value.trim());
+      setIsValidatingUrl(false);
+    };
+    img.onerror = () => {
+      setAvatarUrlPreview(null);
+      setIsValidatingUrl(false);
+      setError("Unable to load image from this URL. Please check the link.");
+    };
+    img.src = value.trim();
+  };
+
+  const handleSaveAvatarUrl = async () => {
+    const nextUrl = avatarUrl.trim();
+    if (!nextUrl || !avatarUrlPreview) {
+      setError("Please enter a valid image URL.");
+      return;
+    }
+
+    const token = window.localStorage.getItem("token");
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    setError("");
+    setNotice("");
+    setIsSaving(true);
+
+    try {
+      const response = await fetch(UPDATE_PROFILE_API_URL, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ profilePicture: nextUrl }),
+      });
+      const result = await readResponse(response);
+      const updatedProfile = normalizeUserProfile({ ...profile, ...result.user, profilePicture: nextUrl });
+
+      setProfile(updatedProfile);
+      setAvatarPreview(updatedProfile.profilePicture || "");
+      setAvatarUrl("");
+      setAvatarUrlPreview(null);
+      window.localStorage.setItem("user", JSON.stringify(updatedProfile));
+      setNotice(result.message || "Profile picture updated from URL.");
+    } catch (requestError) {
+      if (requestError.status === 401) {
+        window.localStorage.removeItem("token");
+        window.localStorage.removeItem("user");
+        navigate("/login", { replace: true });
+        return;
+      }
+      setError(requestError.message || "Unable to update profile picture from URL.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -186,7 +490,7 @@ function Profile() {
         body: JSON.stringify({ fullName, username: editedUsername }),
       });
       const result = await readResponse(response);
-      const updatedProfile = { ...profile, ...result.user };
+      const updatedProfile = normalizeUserProfile({ ...profile, ...result.user });
 
       setProfile(updatedProfile);
       setFormData({
@@ -209,6 +513,12 @@ function Profile() {
     }
   };
 
+  const handleCookieConsentChange = (key, value) => {
+    const nextConsent = { ...cookieConsent, [key]: value };
+    setCookieConsentState(nextConsent);
+    persistCookieConsent(nextConsent);
+  };
+
   const handleLogout = () => {
     window.localStorage.removeItem("token");
     window.localStorage.removeItem("user");
@@ -226,9 +536,9 @@ function Profile() {
           <div>
             <p className="profile-page__eyebrow">YOUR BANANA QUEST</p>
             <h1 id="profile-title">Your profile</h1>
-            <p>Manage your account details and see how you’re doing.</p>
+            <p>Manage your account details and see how you're doing.</p>
           </div>
-          <span className="profile-page__hero-icon" aria-hidden="true">👤</span>
+          <span className="profile-page__hero-icon" aria-hidden="true"><i className="fas fa-user" aria-hidden="true"></i></span>
           <span className="profile-page__hero-banana" aria-hidden="true">🍌</span>
         </header>
 
@@ -255,18 +565,40 @@ function Profile() {
 
         <div className="profile-page__content">
           <section className="profile-page__identity" aria-label="Account overview">
-            <div className="profile-page__avatar" aria-hidden="true">
-              {getInitials(displayName)}
+            <div className="profile-page__avatar-wrapper">
+              {avatarPreview ? (
+                <img
+                  className="profile-page__avatar-image"
+                  src={avatarPreview}
+                  alt={`${displayName}'s avatar`}
+                />
+              ) : (
+                <div className="profile-page__avatar" aria-hidden="true">
+                  {getInitials(displayName)}
+                </div>
+              )}
+              <label className="profile-page__avatar-upload" htmlFor="avatar-upload">
+                <i className="fas fa-camera" aria-hidden="true"></i>
+                <span>Change</span>
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  disabled={isUploadingAvatar}
+                  style={{ display: "none" }}
+                />
+              </label>
             </div>
             <h2>{displayName}</h2>
             <p>{username ? `@${username}` : "Banana Quest player"}</p>
             <div className="profile-page__stats">
               <div>
-                <strong>{Number(profile.points) || 0}</strong>
+                <strong>{isLoadingGameOverview ? "…" : formatNumber(totalPoints)}</strong>
                 <span>Total points</span>
               </div>
               <div>
-                <strong>{Number(profile.currentStreak) || 0}</strong>
+                <strong>{formatNumber(currentStreak)}</strong>
                 <span>Current streak</span>
               </div>
             </div>
@@ -281,7 +613,7 @@ function Profile() {
                 <p className="profile-page__eyebrow">ACCOUNT DETAILS</p>
                 <h2 id="profile-details-title">Personal information</h2>
               </div>
-              <span aria-hidden="true">✏️</span>
+              <span aria-hidden="true"><i className="fas fa-pen" aria-hidden="true"></i></span>
             </div>
 
             {isLoading ? (
@@ -325,7 +657,7 @@ function Profile() {
                     readOnly
                   />
                   <span className="profile-page__field-hint">
-                    Email address can’t be changed here.
+                    Email address can't be changed here.
                   </span>
                 </label>
                 <button type="submit" disabled={isSaving}>
@@ -333,9 +665,173 @@ function Profile() {
                 </button>
               </form>
             )}
+            <div className="profile-page__image-url">
+              <div>
+                <p className="profile-page__eyebrow">PROFILE IMAGE</p>
+                <h3>Paste an image URL</h3>
+                <p>Use a direct link to an image to update your profile picture.</p>
+              </div>
+              <div className="profile-page__avatar-url profile-page__avatar-url--details">
+                {avatarUrlPreview ? (
+                  <img
+                    className="profile-page__url-preview"
+                    src={avatarUrlPreview}
+                    alt="Preview of the new profile picture"
+                  />
+                ) : (
+                  <span className="profile-page__url-preview profile-page__url-preview--placeholder" aria-hidden="true">
+                    <i className="fas fa-image" aria-hidden="true"></i>
+                  </span>
+                )}
+                <input
+                  type="url"
+                  placeholder="https://example.com/image.jpg"
+                  value={avatarUrl}
+                  onChange={handleAvatarUrlChange}
+                  disabled={isUploadingAvatar || isValidatingUrl || isSaving}
+                  aria-label="Image URL for profile picture"
+                />
+                {isValidatingUrl ? (
+                  <span className="profile-page__url-loading" role="status" aria-label="Validating image URL"></span>
+                ) : (
+                  <button
+                    type="button"
+                    className="profile-page__url-save"
+                    onClick={handleSaveAvatarUrl}
+                    disabled={isSaving || isUploadingAvatar || !avatarUrlPreview}
+                  >
+                    {isSaving ? "Saving…" : "Update image"}
+                  </button>
+                )}
+              </div>
+            </div>
             <Link className="profile-page__password-link" to="/change-password">
               Change password <span aria-hidden="true">→</span>
             </Link>
+          </section>
+
+          <section className="profile-page__details profile-page__quest" aria-labelledby="profile-quest-title">
+            <div className="profile-page__section-heading">
+              <div>
+                <p className="profile-page__eyebrow">YOUR PROGRESS</p>
+                <h2 id="profile-quest-title">Quest statistics</h2>
+              </div>
+              <Link className="profile-page__password-link" to="/score-statistics">
+                View full report <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+
+            {isLoadingGameOverview ? (
+              <div className="profile-page__loading" role="status">
+                Loading your quest statistics…
+              </div>
+            ) : gameOverviewError ? (
+              <div className="profile-page__stats-error" role="alert">
+                <span>{gameOverviewError}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLoadingGameOverview(true);
+                    setGameOverviewError("");
+                    setRefreshKey((key) => key + 1);
+                  }}
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <div className="profile-page__quest-grid">
+                <article>
+                  <span>Games played</span>
+                  <strong>{formatNumber(gameOverview?.scores.totalGames)}</strong>
+                </article>
+                <article>
+                  <span>Completed</span>
+                  <strong>{formatNumber(gameOverview?.scores.completedGames)}</strong>
+                </article>
+                <article>
+                  <span>Average score</span>
+                  <strong>{formatNumber(gameOverview?.scores.averageScore)}</strong>
+                </article>
+                <article>
+                  <span>Questions answered</span>
+                  <strong>{formatNumber(gameOverview?.statistics.totalQuestionsAnswered)}</strong>
+                </article>
+                <article>
+                  <span>Correct answers</span>
+                  <strong>{formatNumber(gameOverview?.statistics.totalCorrectAnswers)}</strong>
+                </article>
+                <article>
+                  <span>Answer accuracy</span>
+                  <strong>{formatNumber(gameOverview?.statistics.accuracyPercentage)}%</strong>
+                </article>
+              </div>
+            )}
+          </section>
+
+          <section className="profile-page__details profile-page__privacy" aria-labelledby="cookie-preferences-title">
+            <div className="profile-page__section-heading">
+              <div>
+                <p className="profile-page__eyebrow">PRIVACY SETTINGS</p>
+                <h2 id="cookie-preferences-title">Cookie preferences</h2>
+              </div>
+              <span aria-hidden="true"><i className="fas fa-cookie-bite" aria-hidden="true"></i></span>
+            </div>
+
+            <div className="profile-page__cookie-consent">
+              <p className="profile-page__cookie-description">
+                We use cookies to enhance your experience. Choose which categories you'd like to allow.
+              </p>
+
+              <div className="profile-page__cookie-options">
+                <label className="profile-page__cookie-option">
+                  <div className="profile-page__cookie-option-info">
+                    <strong>Essential cookies</strong>
+                    <span>Required for the site to function properly. Cannot be disabled.</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={true}
+                    disabled
+                  />
+                </label>
+
+                <label className="profile-page__cookie-option">
+                  <div className="profile-page__cookie-option-info">
+                    <strong>Analytics cookies</strong>
+                    <span>Help us understand how visitors interact with the site.</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={cookieConsent.analytics || false}
+                    onChange={(e) => handleCookieConsentChange("analytics", e.target.checked)}
+                  />
+                </label>
+
+                <label className="profile-page__cookie-option">
+                  <div className="profile-page__cookie-option-info">
+                    <strong>Preference cookies</strong>
+                    <span>Remember your settings like theme, language, and game preferences.</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={cookieConsent.preferences || false}
+                    onChange={(e) => handleCookieConsentChange("preferences", e.target.checked)}
+                  />
+                </label>
+              </div>
+
+              <button
+                type="button"
+                className="profile-page__cookie-save"
+                onClick={async () => {
+                  await persistCookieConsent(cookieConsent);
+                  setNotice("Cookie preferences saved.");
+                }}
+              >
+                Save preferences
+              </button>
+            </div>
           </section>
         </div>
       </section>

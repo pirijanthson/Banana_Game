@@ -157,7 +157,7 @@ function ChangePassword() {
             <h1 id="change-password-title">Change password</h1>
             <p>Choose a new password to keep your Banana Quest account safe.</p>
           </div>
-          <span className="change-password__hero-icon" aria-hidden="true">🔐</span>
+          <span className="change-password__hero-icon" aria-hidden="true"><i className="fas fa-lock" aria-hidden="true"></i></span>
           <span className="change-password__hero-banana" aria-hidden="true">🍌</span>
         </header>
 
@@ -167,7 +167,7 @@ function ChangePassword() {
               <p className="change-password__eyebrow">ACCOUNT SECURITY</p>
               <h2 id="password-form-title">Update your password</h2>
             </div>
-            <span aria-hidden="true">🛡️</span>
+            <span aria-hidden="true"><i className="fas fa-shield-alt" aria-hidden="true"></i></span>
           </div>
 
           <p className="change-password__hint">

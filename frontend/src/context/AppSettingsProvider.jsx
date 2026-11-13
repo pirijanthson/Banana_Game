@@ -13,6 +13,7 @@ import {
   clearLocalAppSettings,
   updateRemoteAppSettings,
 } from "../utils/settings";
+import { createBackgroundMusic } from "../utils/backgroundMusic";
 
 export function AppSettingsProvider({ children }) {
   const { pathname } = useLocation();
@@ -21,6 +22,49 @@ export function AppSettingsProvider({ children }) {
   const [loadError, setLoadError] = useState("");
   const loadedToken = useRef(null);
   const requestVersion = useRef(0);
+  const musicPlayer = useRef(null);
+  const musicVolume = useRef(settings.musicVolume);
+
+  useEffect(() => {
+    musicVolume.current = settings.musicVolume;
+    musicPlayer.current?.setVolume(settings.musicVolume);
+  }, [settings.musicVolume]);
+
+  useEffect(() => {
+    if (!settings.backgroundMusic) {
+      musicPlayer.current?.stop();
+      musicPlayer.current = null;
+      return undefined;
+    }
+
+    const startMusic = () => {
+      if (musicPlayer.current) {
+        return;
+      }
+
+      const player = createBackgroundMusic(musicVolume.current);
+      if (!player) {
+        return;
+      }
+      musicPlayer.current = player;
+      player.start().catch((error) => {
+        console.warn("Unable to start background music:", error);
+        player.stop();
+        if (musicPlayer.current === player) {
+          musicPlayer.current = null;
+        }
+      });
+    };
+
+    document.addEventListener("pointerdown", startMusic);
+    document.addEventListener("keydown", startMusic);
+    return () => {
+      document.removeEventListener("pointerdown", startMusic);
+      document.removeEventListener("keydown", startMusic);
+      musicPlayer.current?.stop();
+      musicPlayer.current = null;
+    };
+  }, [settings.backgroundMusic]);
 
   useEffect(() => {
     let isCurrent = true;

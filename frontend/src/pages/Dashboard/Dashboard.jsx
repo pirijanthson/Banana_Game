@@ -136,6 +136,13 @@ function Dashboard() {
 
   const scores = dashboardData?.summary?.scores;
   const statistics = dashboardData?.statistics?.statistics;
+  const accuracy = Math.min(
+    100,
+    Math.max(0, Number(statistics?.accuracyPercentage) || 0),
+  );
+  const totalAnswers = Number(statistics?.totalQuestionsAnswered) || 0;
+  const correctAnswers = Number(statistics?.totalCorrectAnswers) || 0;
+  const currentStreak = Number(user.currentStreak) || 0;
   const games = dashboardData?.history?.games || [];
   const activeGames = games.filter(
     (game) => String(game.status).toUpperCase() === "ACTIVE",
@@ -163,8 +170,8 @@ function Dashboard() {
             </Link>
           </div>
           <div className="dashboard-welcome__art" aria-hidden="true">
-            <span className="dashboard-sparkle dashboard-sparkle--one">✦</span>
-            <span className="dashboard-sparkle dashboard-sparkle--two">✦</span>
+            <span className="dashboard-sparkle dashboard-sparkle--one"><i className="fas fa-star" aria-hidden="true"></i></span>
+            <span className="dashboard-sparkle dashboard-sparkle--two"><i className="fas fa-star" aria-hidden="true"></i></span>
             <span className="dashboard-banana">🍌</span>
             <span className="dashboard-welcome__orbit" />
           </div>
@@ -174,28 +181,94 @@ function Dashboard() {
         <section className="dashboard-stats" aria-label="Your game statistics">
           <StatCard
             variant="points"
-            icon="⭐"
+            icon={<i className="fas fa-star" aria-hidden="true"></i>}
             label="Total points"
             value={isLoading || error ? "—" : formatNumber(scores?.totalPoints)}
           />
           <StatCard
             variant="games"
-            icon="🎮"
+            icon={<i className="fas fa-gamepad" aria-hidden="true"></i>}
             label="Games played"
             value={isLoading || error ? "—" : formatNumber(scores?.totalGames)}
           />
           <StatCard
             variant="accuracy"
-            icon="🎯"
+            icon={<i className="fas fa-bullseye" aria-hidden="true"></i>}
             label="Answer accuracy"
             value={isLoading || error ? "—" : `${formatNumber(statistics?.accuracyPercentage)}%`}
           />
           <StatCard
             variant="best"
-            icon="🏆"
+            icon={<i className="fas fa-trophy" aria-hidden="true"></i>}
             label="Personal best"
             value={isLoading || error ? "—" : formatNumber(scores?.highestScore)}
           />
+        </section>
+
+        <section className="dashboard-insights" aria-labelledby="dashboard-insights-title">
+          <div className="dashboard-insights__heading">
+            <div>
+              <p className="dashboard-eyebrow">YOUR QUEST AT A GLANCE</p>
+              <h2 id="dashboard-insights-title">Progress snapshot</h2>
+            </div>
+            <Link to="/score-statistics">Explore statistics <span aria-hidden="true">→</span></Link>
+          </div>
+
+          <div className="dashboard-insights__grid">
+            <article className="dashboard-insights__accuracy">
+              <div className="dashboard-insights__metric-heading">
+                <span className="dashboard-insights__icon" aria-hidden="true">🎯</span>
+                <span>Answer accuracy</span>
+              </div>
+              <strong>{isLoading || error ? "—" : `${formatNumber(accuracy)}%`}</strong>
+              <div
+                className="dashboard-insights__meter"
+                role="progressbar"
+                aria-label="Answer accuracy"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={isLoading || error ? 0 : accuracy}
+              >
+                <span style={{ width: `${isLoading || error ? 0 : accuracy}%` }} />
+              </div>
+              <small>
+                {isLoading || error
+                  ? "Answer totals unavailable"
+                  : `${formatNumber(correctAnswers)} correct out of ${formatNumber(totalAnswers)} answers`}
+              </small>
+            </article>
+
+            <article>
+              <div className="dashboard-insights__metric-heading">
+                <span className="dashboard-insights__icon" aria-hidden="true">✅</span>
+                <span>Completed games</span>
+              </div>
+              <strong>{isLoading || error ? "—" : formatNumber(scores?.completedGames)}</strong>
+              <small>
+                {isLoading || error
+                  ? "Completion totals unavailable"
+                  : `${formatNumber(scores?.failedGames)} games ended early`}
+              </small>
+            </article>
+
+            <article>
+              <div className="dashboard-insights__metric-heading">
+                <span className="dashboard-insights__icon" aria-hidden="true">⚡</span>
+                <span>Average score</span>
+              </div>
+              <strong>{isLoading || error ? "—" : formatNumber(scores?.averageScore)}</strong>
+              <small>points earned per game</small>
+            </article>
+
+            <article>
+              <div className="dashboard-insights__metric-heading">
+                <span className="dashboard-insights__icon" aria-hidden="true">🔥</span>
+                <span>Current streak</span>
+              </div>
+              <strong>{formatNumber(currentStreak)}</strong>
+              <small>{currentStreak === 1 ? "completed game in a row" : "completed games in a row"}</small>
+            </article>
+          </div>
         </section>
 
         {error && (
@@ -241,7 +314,7 @@ function Dashboard() {
                     className={`dashboard-game-row${String(game.status).toUpperCase() === "ACTIVE" ? " dashboard-game-row--active" : ""}`}
                     key={game._id || game.id}
                   >
-                    <span className="dashboard-game-icon" aria-hidden="true">🍌</span>
+                    <span className="dashboard-game-icon" aria-hidden="true"><i className="fas fa-seedling" aria-hidden="true"></i></span>
                     <div className="dashboard-game-info">
                       <strong>{game.difficulty || "Puzzle"} challenge</strong>
                       <span>{formatDate(game.endedAt || game.createdAt || game.startedAt)}</span>
@@ -268,7 +341,7 @@ function Dashboard() {
               </div>
             ) : (
               <div className="dashboard-empty-state">
-                <span aria-hidden="true">🧩</span>
+                <span aria-hidden="true"><i className="fas fa-puzzle-piece" aria-hidden="true"></i></span>
                 <strong>Your first puzzle is waiting!</strong>
                 <p>Play a game and your recent activity will show up here.</p>
                 <Link to="/game-selection">Find a game <span aria-hidden="true">→</span></Link>

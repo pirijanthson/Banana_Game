@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import BananaBackground from "../../components/BananaBackground/BananaBackground";
+import AuthSidePanel from "../../components/AuthSidePanel/AuthSidePanel";
 import "./ForgotPassword.css";
+import "../AuthPages.css";
 
 const API_BASE_URL = import.meta.env.BACKEND_URL
   ?.replace(/\/+$/, "")
@@ -82,8 +84,10 @@ function ForgotPassword() {
   return (
     <div className="forgot-container">
       <BananaBackground />
-      <div className="forgot-card">
-        <div className="forgot-icon">🔐</div>
+      <div className="auth-layout">
+        <AuthSidePanel variant="recovery" />
+        <div className="forgot-card">
+        <div className="forgot-icon"><i className="fas fa-lock" aria-hidden="true"></i></div>
 
         <h1>Forgot Password?</h1>
 
@@ -131,6 +135,7 @@ function ForgotPassword() {
         <Link to="/login" className="forgot-back-link">
           ← Back to Login
         </Link>
+        </div>
       </div>
     </div>
   );
