@@ -7,6 +7,7 @@ const API_BASE_URL = (import.meta.env.BACKEND_URL || "")
   .replace(/\/+$/, "")
   .replace(/\/api$/i, "");
 const SUMMARY_API_URL = `${API_BASE_URL}/api/games/scores/summary`;
+const HISTORY_API_URL = `${API_BASE_URL}/api/games/history`;
 
 function readStoredUser() {
   try {
@@ -48,9 +49,49 @@ async function fetchScoreSummary(token) {
   return result.scores;
 }
 
+async function fetchGameHistory(token) {
+  const response = await fetch(HISTORY_API_URL, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error(
+      `The server returned an unexpected response (HTTP ${response.status}).`,
+    );
+  }
+
+  if (!response.ok || result?.success !== true || !Array.isArray(result.games)) {
+    const error = new Error(
+      result?.message || "Unable to load your recent games.",
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  return result.games;
+}
+
+function formatDate(value) {
+  if (!value) {
+    return "Date unavailable";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Date unavailable";
+  }
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
 function ScoreSummary() {
   const navigate = useNavigate();
   const [scores, setScores] = useState(null);
+  const [gameHistory, setGameHistory] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -74,9 +115,13 @@ function ScoreSummary() {
 
     const loadSummary = async () => {
       try {
-        const summary = await fetchScoreSummary(token);
+        const [summary, history] = await Promise.all([
+          fetchScoreSummary(token),
+          fetchGameHistory(token),
+        ]);
         if (isCurrent) {
           setScores(summary);
+          setGameHistory(history);
           setError("");
         }
       } catch (requestError) {
@@ -121,6 +166,12 @@ function ScoreSummary() {
     { key: "failed", label: "Game over", count: failedGames },
     { key: "active", label: "In progress", count: activeGames },
   ];
+  const recentGames = gameHistory.slice(0, 4);
+  const bestGame = gameHistory.reduce(
+    (best, game) =>
+      best === null || Number(game.score) > Number(best.score) ? game : best,
+    null,
+  );
 
   const metrics = [
     { icon: <i className="fas fa-star" aria-hidden="true"></i>, label: "Total points", value: scores?.totalPoints },
@@ -268,6 +319,52 @@ function ScoreSummary() {
                 </Link>
               </aside>
             </div>
+
+            <section className="score-summary__recent" aria-labelledby="score-recent-title">
+              <div className="score-summary__panel-heading">
+                <div>
+                  <p className="score-summary__eyebrow">LATEST ACTIVITY</p>
+                  <h2 id="score-recent-title">Recent games</h2>
+                </div>
+                <Link to="/game-history">View all <span aria-hidden="true">→</span></Link>
+              </div>
+              {isLoading ? (
+                <div className="score-summary__recent-loading" role="status">
+                  Loading recent games…
+                </div>
+              ) : recentGames.length > 0 ? (
+                <div className="score-summary__recent-list">
+                  {recentGames.map((game) => (
+                    <article key={game._id || game.id}>
+                      <span className="score-summary__recent-icon" aria-hidden="true">
+                        {String(game.status).toUpperCase() === "COMPLETED" ? "🏅" : "🧩"}
+                      </span>
+                      <div>
+                        <strong>{game.difficulty || "Puzzle"} challenge</strong>
+                        <span>{formatDate(game.endedAt || game.createdAt || game.startedAt)}</span>
+                      </div>
+                      <span className={`score-summary__recent-status score-summary__recent-status--${String(game.status || "active").toLowerCase()}`}>
+                        {String(game.status || "active").toLowerCase()}
+                      </span>
+                      <strong className="score-summary__recent-score">
+                        {formatNumber(game.score)} <small>pts</small>
+                      </strong>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="score-summary__recent-empty">
+                  Your recent scores will appear here after you play your first game.
+                </div>
+              )}
+              {bestGame && (
+                <p className="score-summary__best-detail">
+                  Your personal best of {formatNumber(bestGame.score)} points came from a{" "}
+                  {String(bestGame.difficulty || "puzzle").toLowerCase()} challenge on{" "}
+                  {formatDate(bestGame.endedAt || bestGame.createdAt || bestGame.startedAt)}.
+                </p>
+              )}
+            </section>
 
             <div className="score-summary__footer-link">
               <span>Want to see each game?</span>

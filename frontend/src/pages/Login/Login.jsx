@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import BananaBackground from "../../components/BananaBackground/BananaBackground";
+import AuthSidePanel from "../../components/AuthSidePanel/AuthSidePanel";
 import "./Login.css";
 import "../AuthPages.css";
 
@@ -223,7 +224,9 @@ function Login() {
   return (
     <div className="login-container">
       <BananaBackground />
-      <div className="login-card">
+      <div className="auth-layout">
+        <AuthSidePanel variant="login" />
+        <div className="login-card">
         <div className="login-header">
           <div className="login-logo">🍌</div>
           <h1>Banana Quest</h1>
@@ -373,6 +376,7 @@ function Login() {
         <p className="login-register">
           Don&apos;t have an account? <Link to="/register">Register</Link>
         </p>
+        </div>
       </div>
     </div>
   );

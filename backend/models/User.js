@@ -19,7 +19,7 @@ const settingsSchema = new mongoose.Schema(
         },
         textSize: {
             type: String,
-            enum: ["normal", "large"],
+            enum: ["small", "normal", "medium", "large", "extra-large"],
             default: DEFAULT_SETTINGS.textSize
         },
         reduceMotion: {
@@ -29,6 +29,22 @@ const settingsSchema = new mongoose.Schema(
         soundEffects: {
             type: Boolean,
             default: DEFAULT_SETTINGS.soundEffects
+        },
+        soundVolume: {
+            type: Number,
+            min: 0,
+            max: 100,
+            default: DEFAULT_SETTINGS.soundVolume
+        },
+        backgroundMusic: {
+            type: Boolean,
+            default: DEFAULT_SETTINGS.backgroundMusic
+        },
+        musicVolume: {
+            type: Number,
+            min: 0,
+            max: 100,
+            default: DEFAULT_SETTINGS.musicVolume
         },
         timerWarnings: {
             type: Boolean,

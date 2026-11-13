@@ -136,6 +136,13 @@ function Dashboard() {
 
   const scores = dashboardData?.summary?.scores;
   const statistics = dashboardData?.statistics?.statistics;
+  const accuracy = Math.min(
+    100,
+    Math.max(0, Number(statistics?.accuracyPercentage) || 0),
+  );
+  const totalAnswers = Number(statistics?.totalQuestionsAnswered) || 0;
+  const correctAnswers = Number(statistics?.totalCorrectAnswers) || 0;
+  const currentStreak = Number(user.currentStreak) || 0;
   const games = dashboardData?.history?.games || [];
   const activeGames = games.filter(
     (game) => String(game.status).toUpperCase() === "ACTIVE",
@@ -196,6 +203,72 @@ function Dashboard() {
             label="Personal best"
             value={isLoading || error ? "—" : formatNumber(scores?.highestScore)}
           />
+        </section>
+
+        <section className="dashboard-insights" aria-labelledby="dashboard-insights-title">
+          <div className="dashboard-insights__heading">
+            <div>
+              <p className="dashboard-eyebrow">YOUR QUEST AT A GLANCE</p>
+              <h2 id="dashboard-insights-title">Progress snapshot</h2>
+            </div>
+            <Link to="/score-statistics">Explore statistics <span aria-hidden="true">→</span></Link>
+          </div>
+
+          <div className="dashboard-insights__grid">
+            <article className="dashboard-insights__accuracy">
+              <div className="dashboard-insights__metric-heading">
+                <span className="dashboard-insights__icon" aria-hidden="true">🎯</span>
+                <span>Answer accuracy</span>
+              </div>
+              <strong>{isLoading || error ? "—" : `${formatNumber(accuracy)}%`}</strong>
+              <div
+                className="dashboard-insights__meter"
+                role="progressbar"
+                aria-label="Answer accuracy"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={isLoading || error ? 0 : accuracy}
+              >
+                <span style={{ width: `${isLoading || error ? 0 : accuracy}%` }} />
+              </div>
+              <small>
+                {isLoading || error
+                  ? "Answer totals unavailable"
+                  : `${formatNumber(correctAnswers)} correct out of ${formatNumber(totalAnswers)} answers`}
+              </small>
+            </article>
+
+            <article>
+              <div className="dashboard-insights__metric-heading">
+                <span className="dashboard-insights__icon" aria-hidden="true">✅</span>
+                <span>Completed games</span>
+              </div>
+              <strong>{isLoading || error ? "—" : formatNumber(scores?.completedGames)}</strong>
+              <small>
+                {isLoading || error
+                  ? "Completion totals unavailable"
+                  : `${formatNumber(scores?.failedGames)} games ended early`}
+              </small>
+            </article>
+
+            <article>
+              <div className="dashboard-insights__metric-heading">
+                <span className="dashboard-insights__icon" aria-hidden="true">⚡</span>
+                <span>Average score</span>
+              </div>
+              <strong>{isLoading || error ? "—" : formatNumber(scores?.averageScore)}</strong>
+              <small>points earned per game</small>
+            </article>
+
+            <article>
+              <div className="dashboard-insights__metric-heading">
+                <span className="dashboard-insights__icon" aria-hidden="true">🔥</span>
+                <span>Current streak</span>
+              </div>
+              <strong>{formatNumber(currentStreak)}</strong>
+              <small>{currentStreak === 1 ? "completed game in a row" : "completed games in a row"}</small>
+            </article>
+          </div>
         </section>
 
         {error && (

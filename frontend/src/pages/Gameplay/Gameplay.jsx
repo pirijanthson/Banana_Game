@@ -111,6 +111,7 @@ function Gameplay() {
   const {
     showAnswerFeedback,
     soundEffects,
+    soundVolume,
     timerWarnings,
     timerWarningSeconds,
     showProgress,
@@ -196,7 +197,7 @@ function Gameplay() {
       const result = await submitGameAnswer(token, submittedAnswer, game.id);
       setFeedback(result.result || "");
       if (soundEffects && result.result) {
-        playGameSound(result.result);
+        playGameSound(result.result, soundVolume);
       }
       setAnswer("");
       setImageFailed(false);
@@ -233,7 +234,7 @@ function Gameplay() {
       submissionLock.current = false;
       setIsSubmitting(false);
     }
-  }, [game, navigate, soundEffects]);
+  }, [game, navigate, soundEffects, soundVolume]);
 
   useEffect(() => {
     submitRef.current = submitAnswer;
@@ -274,12 +275,13 @@ function Gameplay() {
       timerWarningPlayedFor.current !== game?.questionStartedAt
     ) {
       timerWarningPlayedFor.current = game?.questionStartedAt;
-      playGameSound("TIME_WARNING");
+      playGameSound("TIME_WARNING", soundVolume);
     }
   }, [
     game?.questionStartedAt,
     remainingSeconds,
     soundEffects,
+    soundVolume,
     timerWarnings,
     timerWarningSeconds,
   ]);

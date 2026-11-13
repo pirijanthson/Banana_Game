@@ -10,6 +10,7 @@ const PROFILE_API_URL = `${API_BASE_URL}/api/users/profile`;
 const UPDATE_PROFILE_API_URL = `${API_BASE_URL}/api/users/profile`;
 const UPLOAD_AVATAR_API_URL = `${API_BASE_URL}/api/users/avatar`;
 const COOKIE_CONSENT_API_URL = `${API_BASE_URL}/api/users/cookie-consent`;
+const GAMES_API_URL = `${API_BASE_URL}/api/games`;
 
 function readStoredUser() {
   try {
@@ -75,6 +76,30 @@ async function readResponse(response) {
   return result;
 }
 
+async function fetchGameOverview(token) {
+  const [summaryResponse, statisticsResponse] = await Promise.all([
+    fetch(`${GAMES_API_URL}/scores/summary`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+    fetch(`${GAMES_API_URL}/scores/statistics`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  ]);
+  const [summary, statistics] = await Promise.all([
+    readResponse(summaryResponse),
+    readResponse(statisticsResponse),
+  ]);
+
+  if (!summary.scores || !statistics.statistics) {
+    throw new Error("The server returned incomplete game statistics.");
+  }
+
+  return {
+    scores: summary.scores,
+    statistics: statistics.statistics,
+  };
+}
+
 function getDisplayName(user) {
   return (
     (typeof user.fullName === "string" && user.fullName.trim()) ||
@@ -114,6 +139,10 @@ function formatJoinDate(value) {
   }).format(date);
 }
 
+function formatNumber(value) {
+  return new Intl.NumberFormat().format(Number(value) || 0);
+}
+
 function Profile() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(() => normalizeUserProfile(readStoredUser()));
@@ -125,6 +154,9 @@ function Profile() {
     };
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingGameOverview, setIsLoadingGameOverview] = useState(true);
+  const [gameOverview, setGameOverview] = useState(null);
+  const [gameOverviewError, setGameOverviewError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [error, setError] = useState("");
@@ -143,6 +175,9 @@ function Profile() {
   });
   const displayName = getDisplayName(profile);
   const username = typeof profile.username === "string" ? profile.username.trim() : "";
+  const totalPoints =
+    gameOverview?.scores?.totalPoints ?? profile.totalPoints ?? profile.points ?? 0;
+  const currentStreak = profile.currentStreak ?? profile.streak ?? 0;
 
   useEffect(() => {
     let isCurrent = true;
@@ -220,8 +255,36 @@ function Profile() {
       }
     };
 
+    const loadGameOverview = async () => {
+      setIsLoadingGameOverview(true);
+      try {
+        const overview = await fetchGameOverview(token);
+        if (isCurrent) {
+          setGameOverview(overview);
+          setGameOverviewError("");
+        }
+      } catch (requestError) {
+        if (requestError.status === 401) {
+          window.localStorage.removeItem("token");
+          window.localStorage.removeItem("user");
+          navigate("/login", { replace: true });
+          return;
+        }
+        if (isCurrent) {
+          setGameOverviewError(
+            requestError.message || "Unable to load your game statistics.",
+          );
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoadingGameOverview(false);
+        }
+      }
+    };
+
     loadProfile();
     loadCookieConsent();
+    loadGameOverview();
 
     return () => {
       isCurrent = false;
@@ -526,46 +589,16 @@ function Profile() {
                   style={{ display: "none" }}
                 />
               </label>
-              <div className="profile-page__avatar-url">
-                {avatarUrlPreview && (
-                  <img
-                    className="profile-page__url-preview"
-                    src={avatarUrlPreview}
-                    alt="Preview"
-                    aria-hidden="true"
-                  />
-                )}
-                <input
-                  type="url"
-                  placeholder="Paste image URL"
-                  value={avatarUrl}
-                  onChange={handleAvatarUrlChange}
-                  disabled={isUploadingAvatar || isValidatingUrl}
-                  aria-label="Image URL for avatar"
-                />
-                {isValidatingUrl && <span className="profile-page__url-loading" aria-label="Validating image URL"></span>}
-                {avatarUrlPreview && (
-                  <button
-                    type="button"
-                    className="profile-page__url-save"
-                    onClick={handleSaveAvatarUrl}
-                    disabled={isSaving}
-                    aria-label="Save avatar from URL"
-                  >
-                    {isSaving ? "Saving…" : "Save"}
-                  </button>
-                )}
-              </div>
             </div>
             <h2>{displayName}</h2>
             <p>{username ? `@${username}` : "Banana Quest player"}</p>
             <div className="profile-page__stats">
               <div>
-                <strong>{Number(profile.totalPoints ?? profile.points ?? 0) || 0}</strong>
+                <strong>{isLoadingGameOverview ? "…" : formatNumber(totalPoints)}</strong>
                 <span>Total points</span>
               </div>
               <div>
-                <strong>{Number(profile.currentStreak ?? profile.streak ?? 0) || 0}</strong>
+                <strong>{formatNumber(currentStreak)}</strong>
                 <span>Current streak</span>
               </div>
             </div>
@@ -632,12 +665,111 @@ function Profile() {
                 </button>
               </form>
             )}
+            <div className="profile-page__image-url">
+              <div>
+                <p className="profile-page__eyebrow">PROFILE IMAGE</p>
+                <h3>Paste an image URL</h3>
+                <p>Use a direct link to an image to update your profile picture.</p>
+              </div>
+              <div className="profile-page__avatar-url profile-page__avatar-url--details">
+                {avatarUrlPreview ? (
+                  <img
+                    className="profile-page__url-preview"
+                    src={avatarUrlPreview}
+                    alt="Preview of the new profile picture"
+                  />
+                ) : (
+                  <span className="profile-page__url-preview profile-page__url-preview--placeholder" aria-hidden="true">
+                    <i className="fas fa-image" aria-hidden="true"></i>
+                  </span>
+                )}
+                <input
+                  type="url"
+                  placeholder="https://example.com/image.jpg"
+                  value={avatarUrl}
+                  onChange={handleAvatarUrlChange}
+                  disabled={isUploadingAvatar || isValidatingUrl || isSaving}
+                  aria-label="Image URL for profile picture"
+                />
+                {isValidatingUrl ? (
+                  <span className="profile-page__url-loading" role="status" aria-label="Validating image URL"></span>
+                ) : (
+                  <button
+                    type="button"
+                    className="profile-page__url-save"
+                    onClick={handleSaveAvatarUrl}
+                    disabled={isSaving || isUploadingAvatar || !avatarUrlPreview}
+                  >
+                    {isSaving ? "Saving…" : "Update image"}
+                  </button>
+                )}
+              </div>
+            </div>
             <Link className="profile-page__password-link" to="/change-password">
               Change password <span aria-hidden="true">→</span>
             </Link>
           </section>
 
-          <section className="profile-page__details" aria-labelledby="cookie-preferences-title">
+          <section className="profile-page__details profile-page__quest" aria-labelledby="profile-quest-title">
+            <div className="profile-page__section-heading">
+              <div>
+                <p className="profile-page__eyebrow">YOUR PROGRESS</p>
+                <h2 id="profile-quest-title">Quest statistics</h2>
+              </div>
+              <Link className="profile-page__password-link" to="/score-statistics">
+                View full report <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+
+            {isLoadingGameOverview ? (
+              <div className="profile-page__loading" role="status">
+                Loading your quest statistics…
+              </div>
+            ) : gameOverviewError ? (
+              <div className="profile-page__stats-error" role="alert">
+                <span>{gameOverviewError}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLoadingGameOverview(true);
+                    setGameOverviewError("");
+                    setRefreshKey((key) => key + 1);
+                  }}
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <div className="profile-page__quest-grid">
+                <article>
+                  <span>Games played</span>
+                  <strong>{formatNumber(gameOverview?.scores.totalGames)}</strong>
+                </article>
+                <article>
+                  <span>Completed</span>
+                  <strong>{formatNumber(gameOverview?.scores.completedGames)}</strong>
+                </article>
+                <article>
+                  <span>Average score</span>
+                  <strong>{formatNumber(gameOverview?.scores.averageScore)}</strong>
+                </article>
+                <article>
+                  <span>Questions answered</span>
+                  <strong>{formatNumber(gameOverview?.statistics.totalQuestionsAnswered)}</strong>
+                </article>
+                <article>
+                  <span>Correct answers</span>
+                  <strong>{formatNumber(gameOverview?.statistics.totalCorrectAnswers)}</strong>
+                </article>
+                <article>
+                  <span>Answer accuracy</span>
+                  <strong>{formatNumber(gameOverview?.statistics.accuracyPercentage)}%</strong>
+                </article>
+              </div>
+            )}
+          </section>
+
+          <section className="profile-page__details profile-page__privacy" aria-labelledby="cookie-preferences-title">
             <div className="profile-page__section-heading">
               <div>
                 <p className="profile-page__eyebrow">PRIVACY SETTINGS</p>

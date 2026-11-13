@@ -13,17 +13,75 @@
 
 .dashboard-page[data-theme="dark"] .dashboard-brand,
 .dashboard-page[data-theme="dark"] .dashboard-nav a,
+.dashboard-page[data-theme="dark"] .dashboard-profile-link,
 .dashboard-page[data-theme="dark"] .dashboard-logout,
 .dashboard-page[data-theme="dark"] .dashboard-footer__brand,
-.dashboard-page[data-theme="dark"] .dashboard-footer__nav a {
+.dashboard-page[data-theme="dark"] .dashboard-footer__nav a,
+.dashboard-page[data-theme="dark"] .dashboard-footer__bottom a {
   color: #e8e5dc;
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-footer__nav > strong,
+.dashboard-page[data-theme="dark"] .dashboard-footer__about > p,
+.dashboard-page[data-theme="dark"] .dashboard-footer__cta > strong {
+  color: #f0eee7;
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-footer__tagline,
+.dashboard-page[data-theme="dark"] .dashboard-footer__cta p {
+  color: #b7b3a8;
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-footer__cta {
+  border-color: #3d4149;
+  background: linear-gradient(135deg, #292c33, #30333a);
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-footer__cta > a {
+  color: #ffd86d;
+}
+
+.dashboard-page[data-theme="dark"] .logout-dialog {
+  border-color: #484b53;
+  background: #292c33;
+  color: #f0eee7;
+}
+
+.dashboard-page[data-theme="dark"] .logout-dialog h2 {
+  color: #f0eee7;
+}
+
+.dashboard-page[data-theme="dark"] .logout-dialog > p:not(.logout-dialog__eyebrow) {
+  color: #c3bfb4;
+}
+
+.dashboard-page[data-theme="dark"] .logout-dialog__cancel {
+  border-color: #4a4e57 !important;
+  background: #33363e !important;
+  color: #f0eee7 !important;
+}
+
+.dashboard-page[data-theme="dark"] .logout-dialog__cancel:hover {
+  background: #3b3e46 !important;
 }
 
 .dashboard-page[data-theme="dark"] .dashboard-nav a:hover,
 .dashboard-page[data-theme="dark"] .dashboard-nav a.is-active,
+.dashboard-page[data-theme="dark"] .dashboard-settings-link:hover,
+.dashboard-page[data-theme="dark"] .dashboard-settings-link.is-active,
 .dashboard-page[data-theme="dark"] .dashboard-logout:hover,
 .dashboard-page[data-theme="dark"] .dashboard-footer__nav a:hover {
   color: #ffd86d;
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-settings-link {
+  border-color: #3d4149;
+  background: #292c33;
+  color: #d3d0c6;
+}
+
+.dashboard-page[data-theme="dark"] .dashboard-profile-link__details small {
+  color: #b7b3a8;
 }
 
 .dashboard-page[data-theme="dark"] [class*="__panel"],
@@ -74,6 +132,38 @@
   color: #ffdf86;
 }
 
+.dashboard-page[data-text-size="small"] :is(
+  h1,
+  h2,
+  h3,
+  p,
+  a,
+  button,
+  label,
+  input,
+  select,
+  strong,
+  small
+) {
+  font-size: 0.92em !important;
+}
+
+.dashboard-page[data-text-size="medium"] :is(
+  h1,
+  h2,
+  h3,
+  p,
+  a,
+  button,
+  label,
+  input,
+  select,
+  strong,
+  small
+) {
+  font-size: 1.04em !important;
+}
+
 .dashboard-page[data-text-size="large"] :is(
   h1,
   h2,
@@ -88,6 +178,22 @@
   small
 ) {
   font-size: 1.08em !important;
+}
+
+.dashboard-page[data-text-size="extra-large"] :is(
+  h1,
+  h2,
+  h3,
+  p,
+  a,
+  button,
+  label,
+  input,
+  select,
+  strong,
+  small
+) {
+  font-size: 1.16em !important;
 }
 
 .dashboard-page[data-reduce-motion="true"] *,

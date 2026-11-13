@@ -7,7 +7,7 @@ const { fetchBananaPuzzle } = require("../services/bananaApiService");
 const difficultySettings = {
   EASY: {
     lives: 5,
-    totalQuestions: 5,
+    totalQuestions: 10,
     questionTimeLimitSeconds: 60,
     pointsPerQuestion: 10,
   },
@@ -19,7 +19,7 @@ const difficultySettings = {
   },
   HARD: {
     lives: 2,
-    totalQuestions: 15,
+    totalQuestions: 10,
     questionTimeLimitSeconds: 30,
     pointsPerQuestion: 30,
   },

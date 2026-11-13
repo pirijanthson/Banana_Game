@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/Dashboard/DashboardLayout/DashboardLayout";
 import {
   DEFAULT_SETTINGS,
   getDashboardBackground,
+  TEXT_SIZE_OPTIONS,
 } from "../../utils/settings";
 import { useAppSettings } from "../../context/useAppSettings";
 import "./Settings.css";
@@ -36,9 +37,14 @@ function Settings() {
   const user = readStoredUser();
   const username = typeof user.username === "string" ? user.username.trim() : "";
   const backgroundColor = getDashboardBackground(settings);
+  const textSizeLabel =
+    TEXT_SIZE_OPTIONS.find((option) => option.value === settings.textSize)?.label ||
+    "Normal";
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [volumeDrafts, setVolumeDrafts] = useState({});
+  const savedVolumeDrafts = useRef({});
 
   useEffect(() => {
     if (!window.localStorage.getItem("token")) {
@@ -60,10 +66,25 @@ function Settings() {
     try {
       await saveSettings({ ...settings, ...updates });
       setSaveMessage("Your settings have been saved to your account.");
+      return true;
     } catch (error) {
       setSaveError(error.message || "Unable to save your settings. Please try again.");
+      return false;
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleVolumeCommit = async (name) => {
+    const value = Number(volumeDrafts[name] ?? settings[name]);
+    if (value === settings[name] || savedVolumeDrafts.current[name] === value) {
+      return;
+    }
+
+    savedVolumeDrafts.current[name] = value;
+    const saved = await updateSettings({ [name]: value });
+    if (!saved) {
+      delete savedVolumeDrafts.current[name];
     }
   };
 
@@ -79,8 +100,12 @@ function Settings() {
     });
   };
 
-  const handleReset = () => {
-    updateSettings(DEFAULT_SETTINGS);
+  const handleReset = async () => {
+    const saved = await updateSettings(DEFAULT_SETTINGS);
+    if (saved) {
+      setVolumeDrafts({});
+      savedVolumeDrafts.current = {};
+    }
   };
 
   return (
@@ -140,7 +165,7 @@ function Settings() {
             <label className="settings-card__field" htmlFor="settings-text-size">
               <span>
                 <strong>Text size</strong>
-                <small>Increase text size across dashboard pages.</small>
+                <small>Choose one of five text sizes across the dashboard.</small>
               </span>
               <select
                 id="settings-text-size"
@@ -148,8 +173,11 @@ function Settings() {
                 value={settings.textSize}
                 onChange={handleChange}
               >
-                <option value="normal">Normal</option>
-                <option value="large">Large</option>
+                {TEXT_SIZE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="settings-card__field settings-card__toggle-field" htmlFor="settings-reduce-motion">
@@ -204,6 +232,81 @@ function Settings() {
                 checked={settings.soundEffects}
                 onChange={handleChange}
               />
+            </label>
+            <label className="settings-card__field settings-card__range-field" htmlFor="settings-sound-volume">
+              <span>
+                <strong>Sound effects volume</strong>
+                <small>Adjust the answer and timer sound level.</small>
+              </span>
+              <span className="settings-card__range-control">
+                <input
+                  id="settings-sound-volume"
+                  name="soundVolume"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={volumeDrafts.soundVolume ?? settings.soundVolume}
+                  disabled={!settings.soundEffects}
+                  onChange={(event) =>
+                    setVolumeDrafts((drafts) => ({
+                      ...drafts,
+                      soundVolume: event.target.value,
+                    }))
+                  }
+                  onPointerUp={() => handleVolumeCommit("soundVolume")}
+                  onKeyUp={() => handleVolumeCommit("soundVolume")}
+                  onBlur={() => handleVolumeCommit("soundVolume")}
+                  aria-valuetext={`${volumeDrafts.soundVolume ?? settings.soundVolume}%`}
+                />
+                <output htmlFor="settings-sound-volume">
+                  {volumeDrafts.soundVolume ?? settings.soundVolume}%
+                </output>
+              </span>
+            </label>
+            <label className="settings-card__field settings-card__toggle-field" htmlFor="settings-background-music">
+              <span>
+                <strong>Background music</strong>
+                <small>Play a gentle instrumental loop while you use the app.</small>
+              </span>
+              <input
+                id="settings-background-music"
+                name="backgroundMusic"
+                type="checkbox"
+                checked={settings.backgroundMusic}
+                onChange={handleChange}
+              />
+            </label>
+            <label className="settings-card__field settings-card__range-field" htmlFor="settings-music-volume">
+              <span>
+                <strong>Music volume</strong>
+                <small>Music starts after your next click or key press.</small>
+              </span>
+              <span className="settings-card__range-control">
+                <input
+                  id="settings-music-volume"
+                  name="musicVolume"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={volumeDrafts.musicVolume ?? settings.musicVolume}
+                  disabled={!settings.backgroundMusic}
+                  onChange={(event) =>
+                    setVolumeDrafts((drafts) => ({
+                      ...drafts,
+                      musicVolume: event.target.value,
+                    }))
+                  }
+                  onPointerUp={() => handleVolumeCommit("musicVolume")}
+                  onKeyUp={() => handleVolumeCommit("musicVolume")}
+                  onBlur={() => handleVolumeCommit("musicVolume")}
+                  aria-valuetext={`${volumeDrafts.musicVolume ?? settings.musicVolume}%`}
+                />
+                <output htmlFor="settings-music-volume">
+                  {volumeDrafts.musicVolume ?? settings.musicVolume}%
+                </output>
+              </span>
             </label>
             <label className="settings-card__field settings-card__toggle-field" htmlFor="settings-timer-warnings">
               <span>
@@ -272,10 +375,84 @@ function Settings() {
               />
             </label>
           </section>
+
+          <section className="settings-card settings-card--account" aria-labelledby="settings-account-title">
+            <div className="settings-card__heading">
+              <span className="settings-card__icon settings-card__icon--account" aria-hidden="true">
+                <i className="fas fa-user-shield" aria-hidden="true"></i>
+              </span>
+              <div>
+                <p className="settings-page__eyebrow">YOUR ACCOUNT</p>
+                <h2 id="settings-account-title">Account &amp; privacy</h2>
+              </div>
+            </div>
+            <p className="settings-card__description">
+              Keep your account details and privacy choices up to date.
+            </p>
+            <Link className="settings-card__link" to="/profile">
+              <span>
+                <strong>Profile &amp; cookies</strong>
+                <small>Update your details and cookie preferences.</small>
+              </span>
+              <span aria-hidden="true">→</span>
+            </Link>
+            <Link className="settings-card__link" to="/change-password">
+              <span>
+                <strong>Password &amp; security</strong>
+                <small>Change the password for your account.</small>
+              </span>
+              <span aria-hidden="true">→</span>
+            </Link>
+          </section>
+
+          <section className="settings-card settings-preview" aria-labelledby="settings-preview-title">
+            <div className="settings-card__heading">
+              <span className="settings-card__icon settings-card__icon--preview" aria-hidden="true">
+                <i className="fas fa-eye" aria-hidden="true"></i>
+              </span>
+              <div>
+                <p className="settings-page__eyebrow">YOUR EXPERIENCE</p>
+                <h2 id="settings-preview-title">Live preview</h2>
+              </div>
+            </div>
+            <div
+              className={`settings-preview__window settings-preview__window--${settings.theme}`}
+              style={{ "--settings-preview-background": backgroundColor }}
+            >
+              <div className="settings-preview__topbar">
+                <span aria-hidden="true">🍌</span>
+                <span>bananaquest</span>
+                <span className="settings-preview__dot" aria-hidden="true"></span>
+              </div>
+              <div className="settings-preview__content">
+                <span className="settings-preview__tag">TODAY'S QUEST</span>
+                <strong>Ready for a challenge?</strong>
+                <span className="settings-preview__button">Play a game <span aria-hidden="true">→</span></span>
+              </div>
+            </div>
+            <div className="settings-preview__summary">
+              <span>
+                <small>Theme</small>
+                <strong>{settings.theme === "dark" ? "Dark" : "Light"}</strong>
+              </span>
+              <span>
+                <small>Text size</small>
+                <strong>{textSizeLabel}</strong>
+              </span>
+              <span>
+                <small>Background</small>
+                <strong>{backgroundColor.toUpperCase()}</strong>
+              </span>
+            </div>
+          </section>
         </fieldset>
 
         <div className="settings-page__footer">
-          <p>Your preferences are saved to your account.</p>
+          <p>
+            {isSaving
+              ? "Saving your preferences…"
+              : "Changes are saved automatically to your account."}
+          </p>
           <button type="button" onClick={handleReset} disabled={isLoading || isSaving}>
             Reset to defaults
           </button>

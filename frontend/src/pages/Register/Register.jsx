@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import BananaBackground from "../../components/BananaBackground/BananaBackground";
+import AuthSidePanel from "../../components/AuthSidePanel/AuthSidePanel";
 import "./Register.css";
 import "../AuthPages.css";
 
@@ -93,7 +94,9 @@ function Register() {
     <div className="register-container">
       <BananaBackground />
 
-      <div className="register-card">
+      <div className="auth-layout">
+        <AuthSidePanel variant="register" />
+        <div className="register-card">
         <h1>Create Account 🍌</h1>
         <p className="register-subtitle">Join Banana Quest and start playing!</p>
 
@@ -220,6 +223,7 @@ function Register() {
         <p className="register-login-link">
           Already have an account? <Link to="/login">Login</Link>
         </p>
+        </div>
       </div>
     </div>
   );

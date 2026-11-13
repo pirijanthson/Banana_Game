@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import BananaBackground from "../../components/BananaBackground/BananaBackground";
+import AuthSidePanel from "../../components/AuthSidePanel/AuthSidePanel";
 import "./ForgotPassword.css";
 import "../AuthPages.css";
 
@@ -83,7 +84,9 @@ function ForgotPassword() {
   return (
     <div className="forgot-container">
       <BananaBackground />
-      <div className="forgot-card">
+      <div className="auth-layout">
+        <AuthSidePanel variant="recovery" />
+        <div className="forgot-card">
         <div className="forgot-icon"><i className="fas fa-lock" aria-hidden="true"></i></div>
 
         <h1>Forgot Password?</h1>
@@ -132,6 +135,7 @@ function ForgotPassword() {
         <Link to="/login" className="forgot-back-link">
           ← Back to Login
         </Link>
+        </div>
       </div>
     </div>
   );
