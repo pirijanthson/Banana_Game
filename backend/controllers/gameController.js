@@ -66,7 +66,7 @@ function formatGameForClient(gameSession) {
   };
 }
 
-// START GAME
+
 const startGame = async (req, res) => {
   try {
     const difficulty = req.body?.difficulty?.toUpperCase();
@@ -120,7 +120,7 @@ const startGame = async (req, res) => {
   }
 };
 
-// GET ACTIVE GAME
+
 const getActiveGame = async (req, res) => {
   try {
     const filter = {
@@ -164,7 +164,7 @@ const getActiveGame = async (req, res) => {
   }
 };
 
-// SUBMIT ANSWER
+
 const submitAnswer = async (req, res) => {
   try {
     const { answer, gameId } = req.body;
@@ -251,7 +251,7 @@ const submitAnswer = async (req, res) => {
 
     gameSession.questionsAnswered += 1;
 
-    // CHECK GAME END CONDITIONS
+    
     if (gameSession.lives <= 0) {
       gameSession.lives = 0;
       gameSession.status = "FAILED";
@@ -287,7 +287,7 @@ const submitAnswer = async (req, res) => {
       });
     }
 
-    // FETCH NEXT QUESTION
+    
     const nextPuzzle = await fetchBananaPuzzle();
 
     gameSession.currentQuestionImage = nextPuzzle.question;
@@ -312,7 +312,7 @@ const submitAnswer = async (req, res) => {
   }
 };
 
-// GET GAME HISTORY
+
 const getGameHistory = async (req, res) => {
   try {
     const games = await GameSession.find({
@@ -339,7 +339,7 @@ const getGameHistory = async (req, res) => {
   }
 };
 
-// GET SCORE SUMMARY
+
 const getScoreSummary = async (req, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user.userId);

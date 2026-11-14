@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import BananaBackground from "../../components/BananaBackground/BananaBackground";
 import "./ResetPassword.css";
 import "../AuthPages.css";
 
@@ -88,7 +87,6 @@ function ResetPassword() {
 
   return (
     <div className="reset-container">
-      <BananaBackground />
 
       <div className="reset-card">
         <div className="reset-icon" aria-hidden="true"><i className="fas fa-lock" aria-hidden="true"></i></div>

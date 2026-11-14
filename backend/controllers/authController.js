@@ -200,7 +200,7 @@ const googleLogin = async (req, res) => {
             });
         }
 
-        // Verify Google ID token
+        
         const ticket = await googleClient.verifyIdToken({
             idToken,
             audience: process.env.GOOGLE_CLIENT_ID
@@ -222,24 +222,24 @@ const googleLogin = async (req, res) => {
             picture
         } = payload;
 
-        // Find existing Google account
+        
         let user = await User.findOne({ googleId });
 
-        // Find existing account using verified email
+        
         if (!user) {
             user = await User.findOne({
                 email: email.toLowerCase()
             });
 
             if (user) {
-                // Link verified Google account to existing user
+                
                 user.googleId = googleId;
                 user.profilePicture = picture || null;
                 await user.save();
             }
         }
 
-        // Create new user if account does not exist
+        
         if (!user) {
             const baseUsername = email
                 .split("@")[0]
@@ -267,7 +267,7 @@ const googleLogin = async (req, res) => {
             });
         }
 
-        // Generate Banana Quest JWT
+        
         const token = jwt.sign(
             {
                 userId: user._id.toString(),
@@ -279,7 +279,7 @@ const googleLogin = async (req, res) => {
             }
         );
 
-        // Send login notification email
+        
         try {
             const transporter = nodemailer.createTransport({
                 host: process.env.SMTP_HOST,
@@ -374,7 +374,7 @@ const loginUser = async (req, res) => {
             });
         }
 
-        // Check whether this account uses password login
+        
         if (!user.password) {
             return res.status(400).json({
                 success: false,
@@ -382,7 +382,7 @@ const loginUser = async (req, res) => {
             });
         }
 
-        // Check account lock
+        
         if (user.lockUntil && user.lockUntil > Date.now()) {
             const remainingTime = Math.ceil(
                 (user.lockUntil - Date.now()) / 60000
@@ -394,14 +394,14 @@ const loginUser = async (req, res) => {
             });
         }
 
-        // Reset expired account lock
+        
         if (user.lockUntil && user.lockUntil <= Date.now()) {
             user.failedLoginAttempts = 0;
             user.lockUntil = null;
             await user.save();
         }
 
-        // Verify password
+        
         const isPasswordValid = await bcrypt.compare(
             password,
             user.password
@@ -435,24 +435,24 @@ const loginUser = async (req, res) => {
             });
         }
 
-        // Reset failed login attempts after correct password
+        
         user.failedLoginAttempts = 0;
         user.lockUntil = null;
         await user.save();
 
-        // Remove previous OTP challenges for this user
+        
         await LoginOTP.deleteMany({
             userId: user._id
         });
 
-        // Generate a new OTP
+        
         const { otp, hashedOTP } = generateLoginOTP();
 
         const challengeId = crypto
             .randomBytes(24)
             .toString("hex");
 
-        // Save OTP details in MongoDB
+        
         const otpRecord = await LoginOTP.create({
             userId: user._id,
             challengeId,
@@ -463,7 +463,7 @@ const loginUser = async (req, res) => {
             lastSentAt: new Date()
         });
 
-        // Send OTP email
+        
         try {
             await sendLoginOTPEmail(user, otp);
 
@@ -485,14 +485,14 @@ const loginUser = async (req, res) => {
             });
         }
 
-        // Mask email address
+        
         const emailParts = user.email.split("@");
         const maskedEmail =
             emailParts[0].charAt(0) +
             "****@" +
             emailParts[1];
 
-        // Do not return JWT before OTP verification
+        
         return res.status(200).json({
             success: true,
             requiresOtp: true,
@@ -542,7 +542,7 @@ const verifyLoginOTP = async (req, res) => {
             });
         }
 
-        // Check OTP expiration
+        
         if (otpRecord.expiresAt <= new Date()) {
             await LoginOTP.deleteOne({
                 _id: otpRecord._id
@@ -554,7 +554,7 @@ const verifyLoginOTP = async (req, res) => {
             });
         }
 
-        // Check maximum OTP attempts
+        
         if (otpRecord.attempts >= otpRecord.maxAttempts) {
             await LoginOTP.deleteOne({
                 _id: otpRecord._id
@@ -566,7 +566,7 @@ const verifyLoginOTP = async (req, res) => {
             });
         }
 
-        // Hash the entered OTP
+        
         const enteredHashedOTP = crypto
             .createHash("sha256")
             .update(String(otp))
@@ -577,7 +577,7 @@ const verifyLoginOTP = async (req, res) => {
             Buffer.from(otpRecord.hashedOTP, "hex")
         );
 
-        // Handle incorrect OTP
+        
         if (!isOTPValid) {
             otpRecord.attempts += 1;
 
@@ -601,7 +601,7 @@ const verifyLoginOTP = async (req, res) => {
             });
         }
 
-        // Find the user
+        
         const user = await User.findById(otpRecord.userId);
 
         if (!user) {
@@ -613,12 +613,12 @@ const verifyLoginOTP = async (req, res) => {
             });
         }
 
-        // Delete OTP after successful verification (one-time use)
+        
         await LoginOTP.deleteOne({
             _id: otpRecord._id
         });
 
-        // Generate JWT only after OTP verification
+        
         const token = jwt.sign(
             {
                 userId: user._id.toString(),
@@ -678,7 +678,7 @@ const resendLoginOTP = async (req, res) => {
             });
         }
 
-        // Check whether the maximum attempts have been reached
+        
         if (otpRecord.attempts >= otpRecord.maxAttempts) {
             await LoginOTP.deleteOne({
                 _id: otpRecord._id
@@ -690,7 +690,7 @@ const resendLoginOTP = async (req, res) => {
             });
         }
 
-        // Check the 60-second resend cooldown
+        
         const timeSinceLastSent =
             Date.now() - new Date(otpRecord.lastSentAt).getTime();
 
@@ -707,7 +707,7 @@ const resendLoginOTP = async (req, res) => {
             });
         }
 
-        // Find the user
+        
         const user = await User.findById(otpRecord.userId);
 
         if (!user) {
@@ -721,13 +721,13 @@ const resendLoginOTP = async (req, res) => {
             });
         }
 
-        // Generate a new OTP
+        
         const { otp, hashedOTP } = generateLoginOTP();
 
-        // Send the new OTP email
+        
         await sendLoginOTPEmail(user, otp);
 
-        // Update the existing OTP record
+        
         otpRecord.hashedOTP = hashedOTP;
         otpRecord.expiresAt = new Date(Date.now() + 5 * 60 * 1000);
         otpRecord.attempts = 0;
@@ -792,7 +792,7 @@ const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
 
-        // Validate email
+        
         if (!email || !email.trim()) {
             return res.status(400).json({
                 success: false,
@@ -800,12 +800,12 @@ const forgotPassword = async (req, res) => {
             });
         }
 
-        // Find user by email
+        
         const user = await User.findOne({
             email: email.trim().toLowerCase()
         });
 
-        // Use the same response whether the account exists or not
+        
         if (!user) {
             return res.status(200).json({
                 success: true,
@@ -813,21 +813,21 @@ const forgotPassword = async (req, res) => {
             });
         }
 
-        // Generate a secure random token
+        
         const resetToken = crypto.randomBytes(32).toString("hex");
 
-        // Store only the hashed token in MongoDB
+        
         user.resetPasswordToken = crypto
             .createHash("sha256")
             .update(resetToken)
             .digest("hex");
 
-        // Token expires in 15 minutes
+        
         user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
 
         await user.save();
 
-        // Configure email transporter
+        
         const transporter = nodemailer.createTransport({
             host: process.env.SMTP_HOST,
             port: Number(process.env.SMTP_PORT),
@@ -838,23 +838,23 @@ const forgotPassword = async (req, res) => {
             }
         });
 
-        // Generate password reset link
+        
         const resetLink =
             `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
-        // Read external HTML email template
+        
         const emailTemplate = fs.readFileSync(
             path.join(__dirname, "../templates/email.html"),
             "utf8"
         );
 
-        // Replace HTML placeholders
+        
         const emailHtml = emailTemplate
             .replace(/{{fullName}}/g, escapeHtml(user.fullName))
             .replace(/{{resetLink}}/g, escapeHtml(resetLink))
             .replace(/{{currentYear}}/g, String(new Date().getFullYear()));
 
-        // Send password reset email
+        
         await transporter.sendMail({
             from: `"Banana Quest" <${process.env.SMTP_USER}>`,
             to: user.email,
@@ -905,13 +905,13 @@ const resetPassword = async (req, res) => {
             });
         }
 
-        // Hash the received token
+        
         const hashedToken = crypto
             .createHash("sha256")
             .update(token)
             .digest("hex");
 
-        // Find account with a valid, unexpired reset token
+        
         const user = await User.findOne({
             resetPasswordToken: hashedToken,
             resetPasswordExpires: { $gt: Date.now() }
@@ -924,10 +924,10 @@ const resetPassword = async (req, res) => {
             });
         }
 
-        // Hash and update the new password
+        
         user.password = await bcrypt.hash(password, 12);
 
-        // Clear reset token so it cannot be reused
+        
         user.resetPasswordToken = null;
         user.resetPasswordExpires = null;
 
