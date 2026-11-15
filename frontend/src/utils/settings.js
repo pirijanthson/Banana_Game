@@ -2,9 +2,7 @@ const SETTINGS_KEY = "bananaQuestSettings";
 export const TEXT_SIZE_OPTIONS = [
   { value: "small", label: "Small" },
   { value: "normal", label: "Normal" },
-  { value: "medium", label: "Medium" },
   { value: "large", label: "Large" },
-  { value: "extra-large", label: "Extra large" },
 ];
 const DEFAULT_SETTINGS = {
   backgroundColor: "#fbfaf6",

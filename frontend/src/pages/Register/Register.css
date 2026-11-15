@@ -1,268 +1,199 @@
-.register-container {
-  width: 100vw;
-  height: 100vh;
-  height: 100svh;
-  min-height: 0;
-  margin-left: calc(-50vw + 50%);
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 10px 15px;
-  box-sizing: border-box;
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  overflow-x: clip;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  background: linear-gradient(135deg, #fff8dc 0%, #ffe69a 50%, #ffd54f 100%);
+
+
+
+
+
+.register-card--shake {
+  animation: registerCardShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
-.register-card {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 440px;
-  padding: 18px 28px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 24px;
-  box-shadow: 0 25px 50px rgba(120, 90, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
-  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
-  transform: translateY(20px);
+@keyframes registerCardShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
 }
 
-@keyframes fadeUp {
+
+.register-field-error {
+  margin: 6px 0 0;
+  color: #963b2b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  animation: registerFieldErrorIn 0.2s ease-out both;
+}
+
+@keyframes registerFieldErrorIn {
+  from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.register-card h1 {
-  text-align: center;
-  margin: 0 0 8px 0;
-  color: #d99b00;
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
+
+.register-input-group input[aria-invalid="true"] {
+  border-color: #e27a6a;
+  background: #fff9f7;
 }
 
-.register-subtitle {
-  text-align: center;
-  color: #666666;
-  font-size: 15px;
-  margin: 0 0 12px 0;
+.register-input-group input[aria-invalid="true"]:focus {
+  border-color: #c95a48;
+  box-shadow: 0 0 0 4px rgba(201, 90, 72, 0.14);
 }
 
-.register-form {
-  text-align: left;
-}
 
-.register-input-group {
-  margin-bottom: 8px;
-  text-align: left;
-}
-
-.register-input-group label {
-  display: block;
-  margin-bottom: 4px;
+.register-field-hint {
+  float: right;
+  font-size: 11px;
   font-weight: 600;
-  color: #333333;
-  font-size: 14px;
+  color: #8b8170;
+  letter-spacing: 0.02em;
 }
 
-.register-input-group input {
-  width: 100%;
-  padding: 9px 13px;
-  border: 2px solid #eaeaea;
-  border-radius: 12px;
-  font-size: 15px;
-  color: #222;
-  background: #fafafa;
-  outline: none;
-  box-sizing: border-box;
-  transition: all 0.25s ease;
+.register-field-hint--ok {
+  color: #16a34a;
 }
 
-.register-input-group input::placeholder {
-  color: #aaaaaa;
+.register-field-hint--bad {
+  color: #dc2626;
 }
 
-.register-input-group input:focus {
-  background: #ffffff;
-  border-color: #ffc107;
-  box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.15);
-}
 
-.register-password-wrapper {
-  position: relative;
-}
-
-.register-password-wrapper input {
-  padding-right: 70px;
-}
-
-.register-password-toggle {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  padding: 6px;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  box-shadow: none;
-  color: #d99b00;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.register-password-toggle:hover,
-.register-password-toggle:focus-visible {
-  transform: translateY(-50%);
-  background: transparent;
-  box-shadow: none;
-  color: #b37f00;
-}
-
-.register-feedback,
-.register-success {
-  margin: 0 0 16px;
-  padding: 11px 13px;
-  border-radius: 10px;
-  font-size: 13px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-
-.register-error {
-  color: #9f2424;
-  background: #fff0f0;
-  border: 1px solid #f3c5c5;
-}
-
-.register-success {
-  color: #28643a;
-  background: #effaf1;
-  border: 1px solid #c8e8ce;
-}
-
-.register-success a {
-  display: inline-block;
+.register-password-strength {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-top: 8px;
-  color: #28643a;
-  font-weight: 700;
 }
 
-.register-submit-btn {
-  width: 100%;
-  padding: 10px;
-  margin-top: 4px;
-  background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
-  color: #1a1a1a;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
+.register-password-strength__bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: #f0ebdd;
+  overflow: hidden;
+}
+
+.register-password-strength__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.register-password-strength__label {
+  font-size: 11px;
   font-weight: 700;
+  min-width: 60px;
+  text-align: right;
+}
+
+
+.register-terms {
+  margin: 4px 0 14px;
+  text-align: left;
+}
+
+.register-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #5f5137;
+  font-size: 12.5px;
+  line-height: 1.5;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+  user-select: none;
 }
 
-.register-submit-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(255, 193, 7, 0.4);
-  background: linear-gradient(135deg, #ffca28 0%, #ffb300 100%);
+.register-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: #d99b00;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.register-submit-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
-}
-
-.register-submit-btn:disabled {
-  opacity: 0.65;
-  cursor: wait;
-  transform: none;
-}
-
-.register-submit-btn:focus-visible,
-.register-login-link a:focus-visible {
-  outline: 3px solid rgba(179, 127, 0, 0.55);
-  outline-offset: 3px;
-}
-
-.register-login-link {
-  text-align: center;
-  margin-top: 12px;
-  font-size: 14px;
-  color: #666666;
-}
-
-.register-login-link a {
-  color: #d99b00;
+.register-checkbox a {
+  color: #a87500;
   font-weight: 700;
   text-decoration: none;
-  transition: color 0.2s;
 }
 
-.register-login-link a:hover {
-  color: #b37f00;
+.register-checkbox a:hover {
   text-decoration: underline;
 }
 
-@media (max-width: 480px) {
-  .register-container {
-    padding: 10px 12px;
-  }
 
-  .register-card {
-    padding: 18px 16px;
-    border-radius: 20px;
-  }
-
-  .register-card h1 {
-    font-size: 28px;
-  }
-
+.register-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
-@media (max-height: 700px) {
-  .register-container {
-    align-items: flex-start;
-    padding-top: 8px;
-    padding-bottom: 8px;
-  }
-
-  .register-card {
-    padding-top: 14px;
-    padding-bottom: 14px;
-  }
-
-  .register-subtitle {
-    margin-bottom: 8px;
-  }
-
-  .register-input-group {
-    margin-bottom: 6px;
-  }
-
-  .register-input-group input {
-    padding-top: 7px;
-    padding-bottom: 7px;
-  }
-
-  .register-login-link {
-    margin-top: 8px;
-  }
+.register-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(26, 26, 26, 0.25);
+  border-top-color: #1a1a1a;
+  animation: registerSpin 0.8s linear infinite;
+  flex-shrink: 0;
 }
+
+@keyframes registerSpin {
+  to { transform: rotate(360deg); }
+}
+
+
+.register-success {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+
+.register-success__icon {
+  font-size: 42px;
+  line-height: 1;
+  margin-bottom: 10px;
+  animation: registerPop 0.5s ease-out both;
+}
+
+@keyframes registerPop {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.register-success__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.register-success__secondary {
+  color: #a87500;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.register-success__secondary:hover {
+  text-decoration: underline;
+}
+
 
 @media (prefers-reduced-motion: reduce) {
-  .register-card {
-    animation: none;
+  .register-card--shake,
+  .register-field-error,
+  .register-spinner,
+  .register-success__icon {
+    animation: none !important;
   }
-
-  .register-card {
-    opacity: 1;
-    transform: none;
+  .register-spinner {
+    border-top-color: transparent;
+    opacity: 0.6;
   }
 }

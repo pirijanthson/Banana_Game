@@ -10,13 +10,13 @@ const {
   validateSettings
 } = require("../utils/settings");
 
-// Multer storage configuration for avatar uploads
+
 const avatarStorage = multer.memoryStorage();
 
 const avatarUpload = multer({
   storage: avatarStorage,
   limits: {
-    fileSize: 2 * 1024 * 1024 // 2MB limit
+    fileSize: 2 * 1024 * 1024 
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith("image/")) {
@@ -27,7 +27,7 @@ const avatarUpload = multer({
   }
 });
 
-// Email transporter
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT),
@@ -38,7 +38,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Escape HTML characters in user-provided names
+
 const escapeHtml = (value) => {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -152,7 +152,7 @@ const updateUserSettings = async (req, res) => {
   }
 };
 
-// Update User Profile
+
 const updateUserProfile = async (req, res) => {
   try {
     const { fullName, username, profilePicture } = req.body || {};
@@ -356,7 +356,7 @@ const changePassword = async (req, res) => {
     user.password = await bcrypt.hash(newPassword, 12);
 
     
-    // Send password change notification email
+    
     try {
       const templatePath = path.join(
         __dirname,
@@ -388,7 +388,7 @@ const changePassword = async (req, res) => {
 
     await user.save();
     
-    // Automatically log out the user after changing the password
+    
     await TokenBlacklist.create({
         token: req.token,
         expiresAt: req.tokenExpiresAt
@@ -429,7 +429,7 @@ const uploadAvatar = [
         });
       }
 
-      // Convert image to base64 data URL
+      
       const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
 
       user.profilePicture = base64Image;
@@ -518,7 +518,7 @@ const updateCookieConsent = async (req, res) => {
     };
 
     user.cookieConsent = {
-      essential: true, // Always true, cannot be disabled
+      essential: true, 
       analytics: Boolean(analytics),
       preferences: Boolean(preferences),
       updatedAt: new Date()
