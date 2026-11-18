@@ -1,11 +1,5 @@
-
-
-
-
-
-
-
 let sharedAudioContext = null;
+const SOUND_EFFECT_OUTPUT_BOOST = 2.5;
 
 function getAudioContext() {
   if (typeof window === "undefined") return null;
@@ -28,46 +22,6 @@ function getAudioContext() {
 }
 
 
-
-function isSoundEnabled() {
-  try {
-    const s = JSON.parse(
-      window.localStorage.getItem("settings") || "{}"
-    );
-    if (s.soundEnabled === false) return false;
-    if (s.soundEffects === false) return false;
-    if (s.muteSound === true) return false;
-    if (s.muted === true) return false;
-  } catch {
-    
-  }
-  return true;
-}
-
-function isMusicEnabled() {
-  try {
-    const s = JSON.parse(
-      window.localStorage.getItem("settings") || "{}"
-    );
-    if (s.musicEnabled === false) return false;
-    if (s.soundEnabled === false) return false;
-  } catch {
-    
-  }
-  return true;
-}
-
-function getMusicVolume() {
-  try {
-    const s = JSON.parse(
-      window.localStorage.getItem("settings") || "{}"
-    );
-    const v = Number(s.musicVolume);
-    return Number.isFinite(v) && v > 0 ? Math.min(v, 100) / 100 : 0.25;
-  } catch {
-    return 0.25;
-  }
-}
 
 function clampVolume(v) {
   const n = Number(v);
@@ -132,7 +86,7 @@ function actuallyPlayTone(ctx, opts) {
     type,
     volume,
     attack,
-    delay,
+    delay = 0,
     startTime,
   } = opts;
 
@@ -143,14 +97,20 @@ function actuallyPlayTone(ctx, opts) {
   osc.type = type;
   osc.frequency.setValueAtTime(frequency, now);
 
-  if (endFrequency !== null && endFrequency !== frequency) {
+  if (
+    Number.isFinite(endFrequency) &&
+    endFrequency !== frequency
+  ) {
     osc.frequency.exponentialRampToValueAtTime(
       Math.max(0.001, endFrequency),
       now + duration
     );
   }
 
-  const safeVol = Math.max(0.001, Math.min(1, volume));
+  const safeVol = Math.max(
+    0.001,
+    Math.min(1, volume * SOUND_EFFECT_OUTPUT_BOOST)
+  );
 
   gain.gain.setValueAtTime(0.0001, now);
   gain.gain.exponentialRampToValueAtTime(safeVol, now + attack);
@@ -333,11 +293,15 @@ function soundCombo(volume) {
 
 const RESULT_HANDLERS = {
   CORRECT: soundCorrect,
+  CORRECT_ANSWER: soundCorrect,
   INCORRECT: soundIncorrect,
   WRONG: soundIncorrect,
+  WRONG_ANSWER: soundIncorrect,
   TICK: soundTick,
   TIME_WARNING: soundTimeWarning,
   TIME_UP: soundTimeUp,
+  TIMEOUT: soundTimeUp,
+  TIME_OUT: soundTimeUp,
   TIME_EXPIRED: soundTimeUp,
   VICTORY: soundVictory,
   COMPLETE: soundVictory,
@@ -350,7 +314,6 @@ const RESULT_HANDLERS = {
 export function playGameSound(result, volumeLevel = 100) {
   const volume = clampVolume(volumeLevel);
   if (volume === 0) return;
-  if (!isSoundEnabled()) return;
 
   const key = String(result || "").toUpperCase();
   const handler = RESULT_HANDLERS[key];
@@ -360,157 +323,6 @@ export function playGameSound(result, volumeLevel = 100) {
     handler(volume);
   } catch (e) {
     console.warn("[gameSounds] play failed:", e);
-  }
-}
-
-
-
-let musicNodes = null;
-let musicLoopTimeout = null;
-
-
-const MELODY = [
-  
-  { note: 440.0, duration: 0.4 }, 
-  { note: 523.25, duration: 0.4 }, 
-  { note: 587.33, duration: 0.4 }, 
-  { note: 659.25, duration: 0.4 }, 
-  { note: 587.33, duration: 0.4 }, 
-  { note: 523.25, duration: 0.4 }, 
-  { note: 440.0, duration: 0.6 }, 
-  { note: 392.0, duration: 0.4 }, 
-  { note: 440.0, duration: 0.4 }, 
-  { note: 523.25, duration: 0.4 }, 
-  { note: 440.0, duration: 0.6 }, 
-  { note: 0, duration: 0.6 }, 
-];
-
-function scheduleMelodyNote(ctx, noteData, startTime, masterGain) {
-  if (!noteData.note || noteData.note === 0) return;
-
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(noteData.note, startTime);
-
-  const peak = 0.06;
-
-  gain.gain.setValueAtTime(0.0001, startTime);
-  gain.gain.exponentialRampToValueAtTime(
-    peak,
-    startTime + 0.03
-  );
-  gain.gain.exponentialRampToValueAtTime(
-    0.0001,
-    startTime + noteData.duration
-  );
-
-  osc.connect(gain);
-  gain.connect(masterGain);
-
-  osc.start(startTime);
-  osc.stop(startTime + noteData.duration + 0.05);
-}
-
-export function startBackgroundMusic() {
-  if (musicNodes) return; 
-  if (!isMusicEnabled()) return;
-
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  
-  if (ctx.state !== "running") {
-    ctx.resume().catch(() => {});
-    
-    setTimeout(() => {
-      if (ctx.state === "running" && !musicNodes) {
-        startBackgroundMusic();
-      }
-    }, 300);
-    return;
-  }
-
-  const masterGain = ctx.createGain();
-  masterGain.gain.value = getMusicVolume();
-  masterGain.connect(ctx.destination);
-
-  musicNodes = { ctx, masterGain, stopped: false };
-
-  
-  const playLoop = () => {
-    if (!musicNodes || musicNodes.stopped) return;
-
-    const startTime = ctx.currentTime + 0.05;
-    let cursor = startTime;
-
-    for (const noteData of MELODY) {
-      scheduleMelodyNote(ctx, noteData, cursor, masterGain);
-      cursor += noteData.duration;
-    }
-
-    const totalDuration = cursor - startTime;
-    const pauseBetweenLoops = 1.2;
-
-    musicLoopTimeout = window.setTimeout(
-      () => {
-        playLoop();
-      },
-      (totalDuration + pauseBetweenLoops) * 1000
-    );
-  };
-
-  playLoop();
-}
-
-export function stopBackgroundMusic() {
-  if (musicLoopTimeout) {
-    window.clearTimeout(musicLoopTimeout);
-    musicLoopTimeout = null;
-  }
-  if (musicNodes) {
-    try {
-      
-      const { ctx, masterGain } = musicNodes;
-      const now = ctx.currentTime;
-      masterGain.gain.cancelScheduledValues(now);
-      masterGain.gain.setValueAtTime(
-        masterGain.gain.value,
-        now
-      );
-      masterGain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        now + 0.3
-      );
-
-      musicNodes.stopped = true;
-
-      window.setTimeout(() => {
-        try {
-          masterGain.disconnect();
-        } catch {
-          
-        }
-      }, 400);
-    } catch {
-      
-    }
-    musicNodes = null;
-  }
-}
-
-export function setMusicVolume(volumeLevel = 100) {
-  if (!musicNodes) return;
-  const ctx = musicNodes.ctx;
-  const v = Math.max(0.0001, clampVolume(volumeLevel) * 0.4);
-  try {
-    musicNodes.masterGain.gain.setValueAtTime(
-      v,
-      ctx.currentTime
-    );
-  } catch {
-    
   }
 }
 

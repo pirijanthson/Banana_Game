@@ -7,12 +7,7 @@ import {
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/Dashboard/DashboardLayout/DashboardLayout";
 import { useAppSettings } from "../../context/useAppSettings";
-import {
-  playGameSound,
-  startBackgroundMusic,
-  stopBackgroundMusic,
-  setMusicVolume,
-} from "../../utils/gameSounds";
+import { playGameSound } from "../../utils/gameSounds";
 import "./Gameplay.css";
 
 const API_BASE_URL = (import.meta.env.BACKEND_URL || "")
@@ -150,8 +145,6 @@ function Gameplay() {
     timerWarnings,
     timerWarningSeconds,
     showProgress,
-    musicEnabled,
-    musicVolume,
   } = settings || {};
 
   const username =
@@ -225,41 +218,6 @@ function Gameplay() {
 
 
   useEffect(() => {
-    if (!game || isLoadingGame) return undefined;
-    if (!musicEnabled) return undefined;
-
-    
-    const startTimer = window.setTimeout(() => {
-      startBackgroundMusic();
-    }, 400);
-
-    return () => {
-      window.clearTimeout(startTimer);
-      stopBackgroundMusic();
-    };
-  }, [game?.id, isLoadingGame, musicEnabled]);
-
-  
-  useEffect(() => {
-    if (musicEnabled && Number.isFinite(Number(musicVolume))) {
-      setMusicVolume(Number(musicVolume));
-    }
-  }, [musicVolume, musicEnabled]);
-
-  
-  useEffect(() => {
-    const handleUnload = () => stopBackgroundMusic();
-    window.addEventListener("beforeunload", handleUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleUnload);
-    };
-  }, []);
-
-  
-
-
-
-  useEffect(() => {
     if (
       game?.questionStartedAt &&
       !isSubmitting &&
@@ -292,7 +250,6 @@ function Gameplay() {
 
 
   const handleLogout = () => {
-    stopBackgroundMusic();
     window.localStorage.removeItem("token");
     window.localStorage.removeItem("user");
     navigate("/login", { replace: true });
@@ -326,8 +283,21 @@ function Gameplay() {
         setFeedback(result.result || "");
 
         
-        if (result.result === "INCORRECT") {
+        if (["INCORRECT", "WRONG"].includes(result.result)) {
           setShakeKey((k) => k + 1);
+        }
+
+        if (soundEffects && submittedAnswer !== undefined) {
+          if (result.result === "CORRECT") {
+            playGameSound("CORRECT", soundVolume);
+          } else if (
+            result.result === "INCORRECT" ||
+            result.result === "WRONG"
+          ) {
+            playGameSound("INCORRECT", soundVolume);
+          } else if (result.result === "TIME_EXPIRED") {
+            playGameSound("TIME_UP", soundVolume);
+          }
         }
 
         setAnswer("");
@@ -338,28 +308,11 @@ function Gameplay() {
           result.game.status === "ACTIVE" &&
           result.game.question
         ) {
-          if (
-            soundEffects &&
-            submittedAnswer !== undefined &&
-            result.result
-          ) {
-            playGameSound(result.result, soundVolume);
-          }
           setGame(result.game);
           setRemainingSeconds(
             result.game.questionTimeLimitSeconds
           );
         } else {
-          
-          stopBackgroundMusic();
-          if (soundEffects) {
-            playGameSound(
-              result.game.status === "COMPLETED"
-                ? "VICTORY"
-                : "GAME_OVER",
-              soundVolume
-            );
-          }
           navigate("/game-result", {
             replace: true,
             state: {

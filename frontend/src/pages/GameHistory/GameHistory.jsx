@@ -58,6 +58,19 @@ function formatDifficulty(value) {
   return `${value[0]}${value.slice(1).toLowerCase()}`;
 }
 
+function getDifficultyIcon(difficulty) {
+  switch (String(difficulty || "").trim().toUpperCase()) {
+    case "EASY":
+      return "fa-seedling";
+    case "MEDIUM":
+      return "fa-bolt";
+    case "HARD":
+      return "fa-fire";
+    default:
+      return "fa-puzzle-piece";
+  }
+}
+
 function formatStatus(value) {
   if (value === "COMPLETED") return "Completed";
   if (value === "FAILED") return "Game over";
@@ -666,7 +679,12 @@ function GameHistory() {
                         className="game-history-row__icon"
                         aria-hidden="true"
                       >
-                        🍌
+                        <i
+                          className={`fas ${getDifficultyIcon(
+                            game.difficulty
+                          )}`}
+                          aria-hidden="true"
+                        ></i>
                       </span>
                       <div className="game-history-row__main">
                         <strong>
