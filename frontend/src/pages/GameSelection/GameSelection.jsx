@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/Dashboard/DashboardLayout/DashboardLayout";
+import { useAppSettings } from "../../context/useAppSettings";
 import { playGameSound } from "../../utils/gameSounds";
 import "./GameSelection.css";
 
@@ -68,18 +69,6 @@ function readStoredUser() {
   }
 }
 
-function readSoundVolume() {
-  try {
-    const settings = JSON.parse(
-      window.localStorage.getItem("settings") || "{}"
-    );
-    const v = Number(settings.soundVolume);
-    return Number.isFinite(v) ? v : 80;
-  } catch {
-    return 80;
-  }
-}
-
 async function startGame(token, difficulty) {
   const response = await fetch(`${GAMES_API_URL}/start`, {
     method: "POST",
@@ -126,7 +115,8 @@ function GameSelection() {
   const hoveredRef = useRef(null);
 
   const user = useMemo(readStoredUser, []);
-  const soundVolume = useMemo(readSoundVolume, []);
+  const { settings } = useAppSettings();
+  const { soundEffects, soundVolume } = settings;
 
   const username =
     typeof user.username === "string"
@@ -149,21 +139,23 @@ function GameSelection() {
   
 
   const playSelectSound = useCallback(() => {
-    playGameSound("CLICK", soundVolume);
-  }, [soundVolume]);
+    if (soundEffects) playGameSound("CLICK", soundVolume);
+  }, [soundEffects, soundVolume]);
 
   const playHoverSound = useCallback(() => {
     
-    playGameSound("CLICK", Math.min(soundVolume * 0.4, 40));
-  }, [soundVolume]);
+    if (soundEffects) {
+      playGameSound("CLICK", Math.min(soundVolume * 0.4, 40));
+    }
+  }, [soundEffects, soundVolume]);
 
   const playStartSound = useCallback(() => {
-    playGameSound("VICTORY", soundVolume);
-  }, [soundVolume]);
+    if (soundEffects) playGameSound("CLICK", soundVolume);
+  }, [soundEffects, soundVolume]);
 
   const playErrorSound = useCallback(() => {
-    playGameSound("INCORRECT", soundVolume);
-  }, [soundVolume]);
+    if (soundEffects) playGameSound("INCORRECT", soundVolume);
+  }, [soundEffects, soundVolume]);
 
   
   const handleLogout = useCallback(() => {

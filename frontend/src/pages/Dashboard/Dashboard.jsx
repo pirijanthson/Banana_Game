@@ -78,6 +78,19 @@ function formatDate(value) {
   }).format(date);
 }
 
+function getDifficultyIcon(difficulty) {
+  switch (String(difficulty || "").trim().toUpperCase()) {
+    case "EASY":
+      return "fa-seedling";
+    case "MEDIUM":
+      return "fa-bolt";
+    case "HARD":
+      return "fa-fire";
+    default:
+      return "fa-puzzle-piece";
+  }
+}
+
 function formatNumber(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return "0";
@@ -662,7 +675,9 @@ function Dashboard() {
                       aria-hidden="true"
                     >
                       <i
-                        className="fas fa-seedling"
+                        className={`fas ${getDifficultyIcon(
+                          game.difficulty
+                        )}`}
                         aria-hidden="true"
                       ></i>
                     </span>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/Dashboard/DashboardLayout/DashboardLayout";
+import { useAppSettings } from "../../context/useAppSettings";
 import { playGameSound } from "../../utils/gameSounds";
 import "./GameResult.css";
 
@@ -25,32 +26,6 @@ function formatDifficulty(difficulty) {
     ? `${difficulty[0]}${difficulty.slice(1).toLowerCase()}`
     : "Puzzle";
 }
-
-function readSoundVolume() {
-  try {
-    const s = JSON.parse(
-      window.localStorage.getItem("settings") || "{}"
-    );
-    const v = Number(s.soundVolume);
-    return Number.isFinite(v) && v > 0 ? v : 80;
-  } catch {
-    return 80;
-  }
-}
-
-function readSoundEnabled() {
-  try {
-    const s = JSON.parse(
-      window.localStorage.getItem("settings") || "{}"
-    );
-    return s.soundEnabled !== false && s.soundEffects !== false;
-  } catch {
-    return true;
-  }
-}
-
-
-
 
 function useAnimatedNumber(target, duration = 1200) {
   const [display, setDisplay] = useState(0);
@@ -321,8 +296,8 @@ function GameResult() {
   const outcome = location.state?.outcome;
 
   const user = useMemo(readStoredUser, []);
-  const soundVolume = useMemo(readSoundVolume, []);
-  const soundEnabled = useMemo(readSoundEnabled, []);
+  const { settings } = useAppSettings();
+  const { soundEffects: soundEnabled, soundVolume } = settings;
 
   const username =
     typeof user.username === "string"
@@ -389,7 +364,7 @@ function GameResult() {
     if (!hasValidResult || !soundEnabled) return;
     const timer = window.setTimeout(() => {
       playGameSound(
-        isComplete ? "VICTORY" : "GAME_OVER",
+        isComplete ? "VICTORY" : "FAILED",
         soundVolume
       );
     }, 300);

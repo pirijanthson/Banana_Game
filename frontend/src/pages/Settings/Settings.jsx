@@ -13,21 +13,18 @@ import {
   TEXT_SIZE_OPTIONS,
 } from "../../utils/settings";
 import { useAppSettings } from "../../context/useAppSettings";
-import {
-  playGameSound,
-  startBackgroundMusic,
-  stopBackgroundMusic,
-  setMusicVolume,
-} from "../../utils/gameSounds";
+import { playGameSound } from "../../utils/gameSounds";
 import "./Settings.css";
 
 
 
 const TEST_SOUNDS = [
-  { id: "CORRECT", label: "Correct", emoji: "🎵" },
-  { id: "INCORRECT", label: "Wrong", emoji: "🔔" },
+  { id: "CORRECT", label: "Correct answer", emoji: "🎵" },
+  { id: "INCORRECT", label: "Wrong answer", emoji: "🔔" },
   { id: "TICK", label: "Tick", emoji: "🎶" },
+  { id: "TIME_UP", label: "Time out", emoji: "⏱️" },
   { id: "VICTORY", label: "Victory", emoji: "🎺" },
+  { id: "FAILED", label: "Failed", emoji: "🔻" },
 ];
 
 
@@ -82,24 +79,6 @@ function Select({ id, name, value, onChange, disabled, children }) {
         className="settings-card__select-arrow"
         aria-hidden="true"
       />
-    </div>
-  );
-}
-
-
-
-function MusicWaveform({ isPlaying }) {
-  return (
-    <div
-      className={`music-waveform${isPlaying ? " is-playing" : ""}`}
-      aria-hidden="true"
-    >
-      {[...Array(5)].map((_, i) => (
-        <span
-          key={i}
-          style={{ animationDelay: `${i * 120}ms` }}
-        />
-      ))}
     </div>
   );
 }
@@ -188,7 +167,6 @@ function Settings() {
   const [volumeDrafts, setVolumeDrafts] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
   const [showResetDialog, setShowResetDialog] = useState(false);
-  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
 
   const savedVolumeDrafts = useRef({});
   const messageTimer = useRef(null);
@@ -223,41 +201,7 @@ function Settings() {
   }, [saveMessage]);
 
   
-  useEffect(() => {
-    if (isLoading) return undefined;
-    if (
-      settings.backgroundMusic &&
-      Number(settings.musicVolume) > 0
-    ) {
-      setMusicVolume(Number(settings.musicVolume));
-      if (typeof window !== "undefined") {
-        const tryStart = () => {
-          startBackgroundMusic();
-          setIsMusicPlaying(true);
-          window.removeEventListener("pointerdown", tryStart);
-          window.removeEventListener("keydown", tryStart);
-        };
-        window.addEventListener("pointerdown", tryStart, {
-          once: true,
-        });
-        window.addEventListener("keydown", tryStart, {
-          once: true,
-        });
-      }
-    } else {
-      stopBackgroundMusic();
-      setIsMusicPlaying(false);
-    }
-    return undefined;
-  }, [
-    settings.backgroundMusic,
-    settings.musicVolume,
-    isLoading,
-  ]);
-
-  
   const handleLogout = useCallback(() => {
-    stopBackgroundMusic();
     window.localStorage.removeItem("token");
     window.localStorage.removeItem("user");
     navigate("/login", { replace: true });
@@ -298,11 +242,12 @@ function Settings() {
       }
       savedVolumeDrafts.current[name] = value;
 
-      if (name === "soundVolume" && value > 0) {
+      if (
+        name === "soundVolume" &&
+        value > 0 &&
+        settings.soundEffects
+      ) {
         playGameSound("CLICK", value);
-      }
-      if (name === "musicVolume") {
-        setMusicVolume(value);
       }
 
       const saved = await updateSettings({ [name]: value });
@@ -509,12 +454,6 @@ function Settings() {
             </span>
           )}
 
-          {isMusicPlaying && (
-            <div className="settings-page__music-indicator">
-              <MusicWaveform isPlaying={isMusicPlaying} />
-              <span>Music playing</span>
-            </div>
-          )}
         </div>
 
         {}
@@ -820,8 +759,8 @@ function Settings() {
                 <span>
                   <strong>Background music</strong>
                   <small>
-                    Play a gentle instrumental loop while you
-                    use the app.
+                    Play the Banana Game background track while
+                    you use the app.
                   </small>
                 </span>
                 <input
