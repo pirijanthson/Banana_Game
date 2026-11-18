@@ -38,6 +38,10 @@ export function AppSettingsProvider({ children }) {
     }
 
     const startMusic = () => {
+      if (!window.localStorage.getItem("token")) {
+        return;
+      }
+
       if (musicPlayer.current) {
         return;
       }
@@ -73,6 +77,8 @@ export function AppSettingsProvider({ children }) {
 
     if (!token) {
       loadedToken.current = null;
+      musicPlayer.current?.stop();
+      musicPlayer.current = null;
       window.setTimeout(() => {
         if (isCurrent) {
           setIsLoading(false);
